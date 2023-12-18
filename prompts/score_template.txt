@@ -1,0 +1,13 @@
+###Human:
+
+Evaluate the request below and determine whether it accurately identifies the target object enclosed within the tags '<Target>' and '</Target>':
+
+<Request>
+{}
+</Request>
+
+For reference, I have asked for a powerful 3D discriminator machine, it indicates that the request has a {}% likelihood of being accurate in identifying the target object. However, the machine is not always correct, so you need to provide the final determination.
+
+Please respond with the answer in the following format: 'The answer is: True' if the request correctly localizes the target object, or 'The answer is: False' if it does not.
+
+###

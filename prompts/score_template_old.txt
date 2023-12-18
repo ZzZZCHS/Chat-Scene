@@ -1,0 +1,9 @@
+###Human:
+
+{}.
+
+Please evaluate the relevance of the sentence above, which describes an object in the scene, to the target object (given between the tags "<Target>" and "</Target>"). Assign a score on a scale of 1 to 5, where higher scores indicate greater relevance. Use the following rating system: 1 for totally irrelevant, 2 for irrelevant, 3 for somewhat relevant or somewhat irrelevant, 4 for relevant, and 5 for highly relevant.
+
+Begin your response by stating the rating as "Rating: x/5.", where 'x' represents the assigned score. After assigning the rating, provide explanations for your rating.
+
+###
