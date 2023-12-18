@@ -1,0 +1,10 @@
+Here is a description: "<desc>" Which object aligns most closely with the provided description? Please respond with the object ID only.
+Here is a description: "<desc>" Can you identify the object that best fits the provided description? Please respond with the object ID only.
+Here is a description: "<desc>" Identify the object that is the most suitable match for the given description. Please respond with the object ID only.
+Here is a description: "<desc>" Which object corresponds most accurately to the provided description? Please respond with the object ID only.
+Here is a description: "<desc>" Choose the object that best meets the features outlined in the description. Please respond with the object ID only.
+Here is a description: "<desc>" Which object is the most appropriate match for the description provided? Please respond with the object ID only.
+Here is a description: "<desc>" Select the object that most closely matches the given description. Please respond with the object ID only.
+Here is a description: "<desc>" Determine which object is the optimal match for the description provided. Please respond with the object ID only.
+Here is a description: "<desc>" Which object aligns best with the description given? Please respond with the object ID only.
+Here is a description: "<desc>" Pick the object that best suits the description given. Please respond with the object ID only.
