@@ -36,21 +36,21 @@ train_file_s2 = [
     #     f"{anno_root}/scannet_pointgroup_train_attributes.pt",
     #     f"{anno_root}/scanrefer_pointgroup_train_stage2_caption_iou50.json"
     # ],
-    # [
-    #     feat_file,
-    #     f"{anno_root}/scannet_train_attributes.pt",
-    #     f"{anno_root}/nr3d_train_stage2_objxx.json"
-    # ],
+    [
+        feat_file,
+        f"{anno_root}/scannet_train_attributes.pt",
+        f"{anno_root}/nr3d_train_stage2_objxx.json"
+    ],
     # [
     #     feat_file,
     #     f"{anno_root}/scannet_train_attributes.pt",
     #     f"{anno_root}/sr3d_train_stage2_objxx.json"
     # ],
-    # [
-    #     feat_file,
-    #     f"{anno_root}/scannet_train_attributes.pt",
-    #     f"{anno_root}/scene_align_train.json",
-    # ],
+    [
+        feat_file,
+        f"{anno_root}/scannet_train_attributes.pt",
+        f"{anno_root}/scene_align_train.json",
+    ],
     # [
     #     feat_file,
     #     f"{anno_root}/scannet_train_attributes.pt",
@@ -98,21 +98,21 @@ train_file_s2 = [
     # ]
 ]
 val_file_s2 = [
-    [
-        feat_file,
-        f"{anno_root}/scannet_val_attributes.pt",
-        f"{anno_root}/scanrefer_val_stage2_objxx.json"
-    ],
+    # [
+    #     feat_file,
+    #     f"{anno_root}/scannet_val_attributes.pt",
+    #     f"{anno_root}/scanrefer_val_stage2_objxx.json"
+    # ],
     # [
     #     f"{anno_root}/scannet_pointgroup_{pc_encoder}_feats.pt",
     #     f"{anno_root}/scannet_pointgroup_val_attributes.pt",
     #     f"{anno_root}/scanrefer_pointgroup_val_stage2_caption_iou25.json"
     # ],
-    # [
-    #     feat_file,
-    #     f"{anno_root}/scannet_val_attributes.pt",
-    #     f"{anno_root}/stage2_val400.json"
-    # ],
+    [
+        feat_file,
+        f"{anno_root}/scannet_val_attributes.pt",
+        f"{anno_root}/stage2_val400.json"
+    ],
     # [
     #     feat_file,
     #     f"{anno_root}/scannet_val_attributes.pt",
@@ -216,7 +216,7 @@ num_workers = 32
 
 # ========================= input ==========================
 s1_batch_size = 64
-s2_batch_size = 4
+s2_batch_size = 1
 s3_batch_size = 1
 # max_txt_l = 32
 
@@ -238,8 +238,8 @@ model = dict(
     stage=3,
     add_scene_token=True,
     debug=False,
-    obj_norm_scale=1,
-    scene_norm_scale=1,
+    obj_norm_scale=200,
+    scene_norm_scale=50,
     grad_scale=1,
 )
 
