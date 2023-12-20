@@ -4,7 +4,7 @@ We follow the instructions in [vil3dref](https://github.com/cshizhe/vil3dref/tre
 
 - Instances from ground truth
 
-    We use [process_pcd.py](preprocess/process_pcd.py) to extract the point cloud of each object from all the scenes and save them in the "pcd_by_instance" directory.
+    We use [process_pcd.py](process_pcd.py) to extract the point cloud of each object from all the scenes and save them in the "pcd_by_instance" directory.
 
 - Instances extracted by [PointGroup](https://github.com/dvlab-research/PointGroup)
 
@@ -21,7 +21,7 @@ We release processed annotations in [Google Drive](https://drive.google.com/driv
 
 - Extract features using [ULIP-2](https://github.com/salesforce/ULIP)
 
-  We download the pretrained ULIP-2 checkpoint file named "pointbert_ULIP-2.pt" and then employ [extract_3dfeat.py](preprocess/extract_3dfeat.py) to extract features for all the instances (objects) in the "pcd_by_instance" directory. You can use the following script:
+  We download the pretrained ULIP-2 checkpoint file named "pointbert_ULIP-2.pt" and then employ [extract_3dfeat.py](extract_3dfeat.py) to extract features for all the instances (objects) in the "pcd_by_instance" directory. You can use the following script:
   ```shell
   python extract_3dfeat.py --test_ckpt_addr pointbert_ULIP-2.pt \
                            --pcds_dir /path/to/pcd_by_instance \
