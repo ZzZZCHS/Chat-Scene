@@ -22,7 +22,7 @@ This is an official repo for paper "Chat-3D v2: Bridging 3D Scene and Large Lang
 - Download LLaMA model:
   - Currently, we choose 
 Vicuna-7B as the LLM in our model, which is finetuned from LLaMA-7B.
-  - Download LLaMA-7B from [hugging face](https://huggingface.co/decapoda-research/llama-7b-hf).
+  - Download LLaMA-7B from [hugging face](https://huggingface.co/docs/transformers/main/model_doc/llama).
   - Download [vicuna-7b-delta-v0](https://huggingface.co/lmsys/vicuna-7b-delta-v0) and process it: (`apply_delta.py` is from [huggingface](https://huggingface.co/CarperAI/stable-vicuna-13b-delta/raw/main/apply_delta.py))
   
   ```shell
