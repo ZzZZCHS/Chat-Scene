@@ -6,7 +6,9 @@ This is an official repo for paper "Chat-3D v2: Bridging 3D Scene and Large Lang
 
 ## News
 
-[2023.12.19] 🔥 Code release. The main training architecture is based on our former work [Chat-3D](https://github.com/Chat-3D/Chat-3D).
+[2024.01.13] 🔥 Update training guide for grounding on ScanRefer.
+
+[2023.12.19] Code release. The main training architecture is based on our former work [Chat-3D](https://github.com/Chat-3D/Chat-3D).
 
 ## 🔨 Preparation
 
@@ -47,32 +49,173 @@ Vicuna-7B as the LLM in our model, which is finetuned from LLaMA-7B.
 
 - Training
   
-  [TODO]
-
-- Inference
-  
   <details>
-  <summary>Evaluate grounding performance on ScanRefer.</summary>
-
-  - modify [config.py](scripts/config.py):
+  <summary>Training for grounding task on ScanRefer</summary>
   
-    ```python
-    val_file_s2=[
+  - Step 1: Object-level Alignment (Attribute-aware Embedding Similarity)
+    - modify [config.py](scripts/config.py):
+      ```python
+      train_file_s1=[
+        [
+          "annotations/scannet_uni3d_feats.pt",
+          "annotations/scannet_train_attributes.pt",
+          "annotations/scanrefer_train_stage1.json"
+        ],
+        [
+          "annotations/scannet_uni3d_feats.pt",
+          "annotations/scannet_train_attributes.pt",
+          "annotations/scannet_train_stage1.json"
+        ]
+      ]
+      val_file_s1=[
+        [
+          "annotations/scannet_uni3d_feats.pt",
+          "annotations/scannet_val_attributes.pt",
+          "annotations/scannet_val_stage1.json"
+        ]
+      ]
+      ```
+    - modify [run.sh](scripts/run.sh):
+      ```python
+      stage=1
+      epoch=6
+      add_scene_token=False
+      evaluate=False
+      pretrained_path=""
+      ```
+    - run: `./scripts/run.sh`
+    - The trained model's checkpoints are saved under `outputs/<step1_exp_name>/`.
+  - Step 2: Object-level Alignment (Object-level Question-Answering)
+    - modify [config.py](scripts/config.py):
+      ```python
+      train_file_s2=[
+        [
+          "annotations/scannet_uni3d_feats.pt",
+          "annotations/scannet_train_attributes.pt",
+          "annotations/obj_align_train.json"
+        ]
+      ]
+      val_file_s2=[
+        [
+          "annotations/scannet_uni3d_feats.pt",
+          "annotations/scannet_val_attributes.pt",
+          "annotations/obj_align_val.json"
+        ]
+      ]
+      ```
+    - modify [run.sh](scripts/run.sh):
+      ```python
+      stage=2
+      epoch=3
+      add_scene_token=False
+      evaluate=False
+      pretrained_path="outputs/<step1_exp_name>/ckpt_05.pth"
+      ```
+    - run: `./scripts/run.sh`
+    - The trained model's checkpoints are saved under `outputs/<step2_exp_name>/`.
+  - Step 3: Scene-level Alignment
+    - modify [config.py](scripts/config.py):
+      ```python
+      train_file_s2=[
+        [
+          "annotations/scannet_uni3d_feats.pt",
+          "annotations/scannet_train_attributes.pt",
+          "annotations/scanrefer_train_stage2_objxx.json"
+        ],
+        [
+          "annotations/scannet_uni3d_feats.pt",
+          "annotations/scannet_train_attributes.pt",
+          "annotations/nr3d_train_stage2_objxx.json"
+        ],
+        [
+          "annotations/scannet_uni3d_feats.pt",
+          "annotations/scannet_train_attributes.pt",
+          "annotations/scene_align_train.json"
+        ]
+      ]
+      val_file_s2=[
+        [
+          "annotations/scannet_uni3d_feats.pt",
+          "annotations/scannet_val_attributes.pt",
+          "annotations/stage2_val400.json"
+        ]
+      ]
+      ```
+    - modify [run.sh](scripts/run.sh):
+      ```python
+      stage=2
+      epoch=3
+      add_scene_token=True
+      evaluate=False
+      pretrained_path="outputs/<step2_exp_name>/ckpt_00.pth"
+      ```
+    - run: `./scripts/run.sh`
+    - The trained model's checkpoints are saved under `outputs/<step3_exp_name>/`.
+  - Step 4: Fine-tuning on Grounding Task
+    - modify [config.py](scripts/config.py):
+      ```python
+      train_file_s2=[
+        [
+          "annotations/scannet_uni3d_feats.pt",
+          "annotations/scannet_train_attributes.pt",
+          "annotations/nr3d_train_stage2_grounding.json"
+        ],
+        [
+          "annotations/scannet_uni3d_feats.pt",
+          "annotations/scannet_train_attributes.pt",
+          "annotations/scanrefer_train_stage2_grounding.json"
+        ],
+        [
+          "annotations/scannet_pointgroup_uni3d_feats.pt",
+          "annotations/scannet_pointgroup_train_attributes.pt",
+          "annotations/scanrefer_pointgroup_train_stage2_grounding.json"
+        ]
+      ]
+      val_file_s2=[
         [
           "annotations/scannet_pointgroup_uni3d_feats.pt",
           "annotations/scannet_pointgroup_val_attributes.pt",
           "annotations/scanrefer_pointgroup_val_stage2_grounding.json"
         ]
-      ],
+      ]
+      ```
+    - modify [run.sh](scripts/run.sh):
+      ```python
+      stage=2
+      epoch=3
+      add_scene_token=True
+      evaluate=False
+      pretrained_path="outputs/<step3_exp_name>/ckpt_01.pth"
+      ```
+    - run: `./scripts/run.sh`
+    - The trained model's checkpoints are saved under `outputs/<step4_exp_name>/`. You can evaluate them following the inference guide.
+    - Simultaneously, the predicted results are already saved as `outputs/<step4_exp_name>/preds_epochX_stepXXXX.json`. You can directly calculate the IoU metrics using `others/calc_scanrefer_grounding_acc.py` (see inference guide)
+  </details>
+
+- Inference
+  
+  <details>
+  <summary>Evaluate grounding performance on ScanRefer</summary>
+
+  - modify [config.py](scripts/config.py):
+  
+    ```python
+    val_file_s2=[
+      [
+        "annotations/scannet_pointgroup_uni3d_feats.pt",
+        "annotations/scannet_pointgroup_val_attributes.pt",
+        "annotations/scanrefer_pointgroup_val_stage2_grounding.json"
+      ]
+    ]
     ```
   
   - modify [run.sh](scripts/run.sh): (We provide the pretrained checkpoint in [Google Drive](https://drive.google.com/drive/folders/19wOjXYjca6w3JRVzbbFMgwiQj6kd6MXQ?usp=drive_link))
   
-    ```shell
+    ```python
     stage=2
     add_scene_token=True
     evaluate=True
-    pretrained_path=/path/to/pretrained_model.pth
+    pretrained_path="/path/to/pretrained_model.pth"
     ```
   
   - run evaluate:
