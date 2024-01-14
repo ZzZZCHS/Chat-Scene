@@ -301,7 +301,7 @@ class Chat3D(nn.Module):
             object_list_embed[object_list_ind+1] = embed_2[scene_mask.bool()].to(object_list_embed.dtype)
         return object_list_embed
 
-    def forward_stage1(self, scene_feat, scene_locs, scene_colors, target_captions, target_clses, is_eval=False, **kwargs):
+    def forward_stage1(self, scene_feat, scene_locs, scene_colors, target_captions, is_eval=False, **kwargs):
         object_embed = self.encode_object_feat(scene_feat, scene_locs, scene_colors)
         proj_object_embed = self.object_proj(object_embed)
         proj_object_embed = proj_object_embed.squeeze(1)
