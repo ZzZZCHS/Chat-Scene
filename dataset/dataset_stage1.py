@@ -17,7 +17,7 @@ class S1PTDataset(PTBaseDataset):
         super().__init__()
         self.feat_file, self.attribute_file, self.anno_file = ann_file[:3]
 
-        self.cat2id = json.load(open("annotations/cat2nyu40id.json", "r"))
+        # self.cat2id = json.load(open("annotations/cat2nyu40id.json", "r"))
 
         self.feats = torch.load(self.feat_file)
         self.attributes = torch.load(self.attribute_file)
@@ -31,14 +31,14 @@ class S1PTDataset(PTBaseDataset):
         scene_feat, scene_locs, scene_colors = scene_feat[obj_id:obj_id+1], scene_locs[obj_id:obj_id+1], scene_colors[obj_id:obj_id+1]
         target_captions = self.anno[index]["captions"]
         assert len(target_captions) > 0 and len(target_captions[0]) > 0, target_captions
-        obj_labels = self.attributes[scene_id]["objects"]
-        target_cls = self.cat2id[obj_labels[obj_id]] - 1
+        # obj_labels = self.attributes[scene_id]["objects"]
+        # target_cls = self.cat2id[obj_labels[obj_id]] - 1
         # target_cls = [self.cat2id[x] - 1 for x in obj_labels]
-        return scene_feat, scene_locs, scene_colors, target_captions, target_cls
+        return scene_feat, scene_locs, scene_colors, target_captions
 
 
 def s1_collate_fn(batch):
-    scene_feats, scene_locs, scene_colors, target_captions, target_clses = zip(*batch)
+    scene_feats, scene_locs, scene_colors, target_captions = zip(*batch)
     # batch_scene_feat, batch_scene_locs, batch_scene_colors, batch_scene_mask = process_batch_data(scene_feats, scene_locs, scene_colors)
     # batch_target_clses = torch.zeros_like(batch_scene_mask, dtype=torch.long)
     # for i in range(len(batch_target_clses.shape[0])):
@@ -46,7 +46,7 @@ def s1_collate_fn(batch):
     scene_feats = torch.stack(scene_feats)
     scene_locs = torch.stack(scene_locs)
     scene_colors = torch.stack(scene_colors)
-    target_clses = torch.tensor(target_clses, dtype=torch.long)
+    # target_clses = torch.tensor(target_clses, dtype=torch.long)
     return {
         "scene_feat": scene_feats,
         "scene_locs": scene_locs,
@@ -54,7 +54,7 @@ def s1_collate_fn(batch):
         # "scene_mask": batch_scene_mask,
         # "obj_ids": obj_ids,
         "target_captions": target_captions,
-        "target_clses": target_clses,
+        # "target_clses": target_clses,
         # "ids": index
     }
 

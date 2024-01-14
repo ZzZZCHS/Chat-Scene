@@ -89,8 +89,7 @@ def train(
     iterator = metric_logger.log_every(train_loader, log_freq, header)
     for i, (media_type, batch) in enumerate(iterator):
         for k in batch.keys():
-            if k in ["scene_feat", "scene_locs", "scene_colors", "scene_mask", "obj_ids", "detach_mask",
-                     "target_clses"]:
+            if k in ["scene_feat", "scene_locs", "scene_colors", "scene_mask", "obj_ids", "detach_mask"]:
                 batch[k] = batch[k].to(device)
 
         with torch.cuda.amp.autocast(enabled=stage == 1):
@@ -430,4 +429,3 @@ def main(config):
 if __name__ == "__main__":
     cfg = setup_main()
     main(cfg)
-  
