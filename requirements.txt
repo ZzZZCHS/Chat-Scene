@@ -1,0 +1,15 @@
+aac_metrics==0.4.2
+apex==0.9.10.dev0
+einops==0.6.1
+numpy==1.23.5
+openai==0.27.8
+pandas==1.5.3
+plyfile==1.0.1
+PyYAML==6.0
+scikit_learn==1.3.0
+termcolor==2.3.0
+tqdm==4.64.1
+transformers==4.28.1
+trimesh==3.23.1
+wandb==0.14.0
+pycocoevalcap==1.2
