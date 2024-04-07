@@ -7,6 +7,8 @@ import torch
 
 from dataset.base_dataset import PTBaseDataset, process_batch_data, replace_old_id
 import glob
+import random
+from prompts.prompts import obj_caption_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -14,23 +16,34 @@ logger = logging.getLogger(__name__)
 
 class S2PTDataset(PTBaseDataset):
 
-    def __init__(self, ann_file, **kwargs):
+    def __init__(self, ann_list, **kwargs):
         super().__init__()
-        self.feat_file, self.attribute_file, self.anno_file = ann_file[:3]
-
-        self.feats = torch.load(self.feat_file, map_location='cpu')
-        self.attributes = torch.load(self.attribute_file, map_location='cpu')
-        self.anno = json.load(open(self.anno_file, 'r'))
+        feat_file, img_feat_file, attribute_file, anno_file = ann_list[:4]
+        self.feats = torch.load(feat_file, map_location='cpu')
+        self.img_feats = torch.load(img_feat_file, map_location='cpu') if img_feat_file is not None else None
+        self.attributes = torch.load(attribute_file, map_location='cpu') if attribute_file is not None else None
+        self.anno = json.load(open(anno_file, 'r'))
+        if self.attributes is None:
+            self.scene_feats = self.feats
+            self.scene_img_feats = self.scene_masks = None
+        else:
+            self.scene_feats, self.scene_img_feats, self.scene_masks = self.prepare_scene_features()
 
     def __len__(self):
         return len(self.anno)
 
     def __getitem__(self, index):
-        scene_id, obj_id, scene_feat, scene_locs, scene_colors = self.get_anno(index)
+        if self.attributes is not None and self.anno[index]['scene_id'] not in self.attributes:
+            print(f"{self.anno[index]['scene_id']} not in attribute file!!!")
+            return self.__getitem__(random.randint(0, len(self.anno)-1))
+        scene_id, obj_id, scene_feat, scene_img_feat, scene_mask, scene_locs = self.get_anno(index)
         caption = self.anno[index]["caption"]
-        question = self.anno[index]["prompt"]
-        related_ids = self.anno[index]["related_ids"] if "related_ids" in self.anno[index] else None
-        obj_num = scene_locs.shape[0]
+        if 'prompt' not in self.anno[index]:
+            question = random.choice(obj_caption_prompt)
+        else:
+            question = self.anno[index]["prompt"]
+        # related_ids = self.anno[index]["related_ids"] if "related_ids" in self.anno[index] else None
+        # obj_num = scene_locs.shape[0]
         # if obj_num > 20:
         #     pos = scene_locs[:, :3]
         #     dist = torch.sqrt(torch.sum((pos.unsqueeze(1) - pos.unsqueeze(0)) ** 2, -1) + 1e-10)
@@ -65,22 +78,25 @@ class S2PTDataset(PTBaseDataset):
         #     for rid in related_ids:
         #         if rid < scene_feat.shape[0]:
         #             detach_mask[rid] = 0
-        return scene_feat, scene_locs, scene_colors, obj_id, caption, question
+        return scene_feat, scene_img_feat, scene_mask, scene_locs, obj_id, caption, question
 
 
 def s2_collate_fn(batch):
-    scene_feats, scene_locs, scene_colors, obj_ids, captions, questions = zip(*batch)
-    batch_scene_feat, batch_scene_locs, batch_scene_colors, batch_scene_mask = process_batch_data(scene_feats,
-                                                                                                  scene_locs,
-                                                                                                  scene_colors)
+    scene_feats, scene_img_feats, scene_masks, scene_locs, obj_ids, captions, questions = zip(*batch)
+    batch_scene_feat, batch_scene_img_feat, batch_scene_locs, batch_scene_mask = process_batch_data(
+        scene_feats,
+        scene_img_feats,
+        scene_masks,
+        scene_locs
+    )
     # batch_detach_mask = torch.ones_like(batch_scene_mask, dtype=torch.bool)
     # for i in range(batch_detach_mask.shape[0]):
     #     batch_detach_mask[i][:detach_masks[i].shape[0]] = detach_masks[i]
     obj_ids = torch.tensor(obj_ids)
     return {
         "scene_feat": batch_scene_feat,
+        "scene_img_feat": batch_scene_img_feat,
         "scene_locs": batch_scene_locs,
-        "scene_colors": batch_scene_colors,
         "scene_mask": batch_scene_mask,
         # "detach_mask": batch_detach_mask,
         "obj_ids": obj_ids,

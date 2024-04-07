@@ -15,6 +15,7 @@ from models.position_embedding import PositionEmbeddingCoordsSine, PositionalEmb
 from peft import LoraConfig, get_peft_model
 from transformers.tokenization_utils_base import AddedToken
 # from models.load_llama import init_llama_model
+from torch.nn.utils.rnn import pad_sequence
 
 from transformers import StoppingCriteria, StoppingCriteriaList
 from IPython import embed
@@ -22,6 +23,10 @@ import contextlib
 import math
 
 logger = logging.getLogger(__name__)
+
+
+def nclamp(input, min, max):
+    return input.clamp(min=min, max=max).detach() + input - input.detach()
 
 
 def print_grad_status(model):
@@ -86,16 +91,22 @@ class Chat3D(nn.Module):
         self.system_path = config.model.system_path
         self.instruction_path = config.model.instruction_path
         self.role = config.model.role
+        self.no_obj = config.model.no_obj
         self.add_scene_token = config.model.add_scene_token
+        self.add_img_token = config.model.add_img_token
         self.obj_norm_scale = config.model.obj_norm_scale
         self.scene_norm_scale = config.model.scene_norm_scale
         self.grad_scale = config.model.grad_scale
+        self.train_emb = config.model.train_emb
+        self.train_img_proj = config.model.train_img_proj
 
         mlp_dropout = config.model.mlp_dropout
         self.stage = config.model.stage
 
         self.input_dim = config.model.input_dim
+        self.img_input_dim = config.model.img_input_dim
         self.attr_dim = config.model.attr_dim
+        self.scene_dim = config.model.scene_dim
         self.inter_dim = self.input_dim + self.attr_dim * 2
 
         # self.pc_start_token, self.pc_end_token = "<Target>", "</Target>"
@@ -110,7 +121,7 @@ class Chat3D(nn.Module):
             if self.low_resource:
                 self.llama_model = LlamaForCausalLM.from_pretrained(
                     llama_model_path,
-                    torch_dtype=torch.float16,
+                    torch_dtype=torch.bfloat16,
                     load_in_8bit=True,
                     device_map="auto",
                     attn_implementation="flash_attention_2"
@@ -118,7 +129,7 @@ class Chat3D(nn.Module):
             else:
                 self.llama_model = LlamaForCausalLM.from_pretrained(
                     llama_model_path,
-                    torch_dtype=torch.float16,
+                    torch_dtype=torch.bfloat16,
                     attn_implementation="flash_attention_2"
                 )
             # print(torch.cuda.memory_allocated(device="cuda:0")/1e9)
@@ -132,7 +143,6 @@ class Chat3D(nn.Module):
             self.llama_model.lm_head.weight.data = self.llama_model.lm_head.weight.data.float()
             self.llama_model.model.embed_tokens.weight.requires_grad = True
             self.llama_model.model.embed_tokens.weight.data = self.llama_model.model.embed_tokens.weight.data.float()
-
 
             if config.model.use_lora:
                 def find_linear_layers(model, lora_target_modules):
@@ -173,10 +183,10 @@ class Chat3D(nn.Module):
 
             objid_tokens = []
             for i in range(200):
-                # objid_tokens.append(AddedToken(f"<OBJ{i:03}>", lstrip=True, rstrip=False, normalized=False))
                 objid_tokens.append(f"<OBJ{i:03}>")
-            self.ori_vocab_size = len(self.llama_tokenizer)
+            self.objid_start_idx = self.ori_vocab_size = len(self.llama_tokenizer)
             self.llama_tokenizer.add_tokens(objid_tokens, special_tokens=True)
+            self.objid_end_idx = len(self.llama_tokenizer)
             self.llama_model.resize_token_embeddings(len(self.llama_tokenizer))
 
             self.llama_dim = self.llama_model.config.hidden_size
@@ -190,65 +200,67 @@ class Chat3D(nn.Module):
         #     # nn.ReLU(),
         #     # nn.LayerNorm(self.input_dim),
         # )
-        self.coord_proj = nn.Sequential(
-            nn.Linear(3, self.attr_dim),
-            # nn.ReLU(),
-            # nn.LayerNorm(self.attr_dim),
-            # nn.Dropout(mlp_dropout)
-        )
-        self.color_proj = nn.Sequential(
-            nn.Linear(3, self.attr_dim),
-            # nn.ReLU(),
-            # nn.LayerNorm(self.attr_dim),
-            # nn.Dropout(mlp_dropout)
-        )
-        # self.color_dropout = nn.Dropout(mlp_dropout)
-        # self.pos_proj = nn.Sequential(
-        #     nn.Linear(6, self.inter_dim),
-        #     nn.LayerNorm(self.inter_dim)
+        # self.coord_proj = nn.Sequential(
+        #     nn.Linear(3, self.attr_dim),
+        #     # nn.ReLU(),
+        #     # nn.LayerNorm(self.attr_dim),
+        #     # nn.Dropout(mlp_dropout)
         # )
-        # self.pos_embedding = PositionalEmbedding(dim=self.llama_dim)
+        # self.color_proj = nn.Sequential(
+        #     nn.Linear(3, self.attr_dim),
+        #     # nn.ReLU(),
+        #     # nn.LayerNorm(self.attr_dim),
+        #     # nn.Dropout(mlp_dropout)
+        # )
+        # self.color_dropout = nn.Dropout(mlp_dropout)
+        self.pos_embedding = PositionEmbeddingCoordsSine(d_pos=self.scene_dim)
         self.pos_proj = nn.Sequential(
-            nn.Linear(3, self.llama_dim, bias=False)
+            nn.Linear(self.scene_dim, self.scene_dim)
         )
         self.object_proj = nn.Sequential(
             nn.Linear(self.input_dim, self.llama_dim),
-            # nn.GELU(),
-            # nn.Dropout(mlp_dropout),
-            # nn.LayerNorm(self.llama_dim),
-            # nn.Linear(self.llama_dim, self.llama_dim)
+            nn.GELU(),
+            nn.Linear(self.llama_dim, self.llama_dim)
         )
+        self.object_img_proj = nn.Sequential(
+            nn.Linear(self.input_dim, self.llama_dim),
+            nn.GELU(),
+            nn.Linear(self.llama_dim, self.llama_dim)
+        )
+        if not self.train_img_proj:
+            for p in self.object_img_proj.parameters():
+                p.requires_grad = False
         # self.object_layer_norm = nn.LayerNorm(self.input_dim)
         # self.scene_proj = nn.Sequential(
         #     nn.Linear(self.llama_dim, self.llama_dim),
         # )
-        self.encoder_num_layers = config.model.encoder_num_layers
-        self.relation_module = CMT(hidden_size=self.llama_dim, num_layers=self.encoder_num_layers)
-        # self.cls_head = nn.Sequential(
-        #     nn.Linear(self.llama_dim, 40)
-        # )
+        # self.encoder_num_layers = config.model.encoder_num_layers
+        # self.relation_module = CMT(hidden_size=self.llama_dim, num_layers=self.encoder_num_layers)
+        self.encoder_layer = nn.TransformerEncoderLayer(d_model=self.scene_dim, nhead=8, dim_feedforward=2048, norm_first=True, batch_first=True)
+        self.relation_module = nn.TransformerEncoder(self.encoder_layer, num_layers=config.model.encoder_num_layers)
+        self.scene_init_proj = nn.Sequential(
+            nn.Linear(self.input_dim, self.scene_dim)
+        )
+        self.scene_proj = nn.Sequential(
+            nn.Linear(self.scene_dim, self.llama_dim),
+            # nn.GELU(),
+            # nn.Linear(self.llama_dim, self.llama_dim)
+        )
+        
+        if not self.add_scene_token:
+            for p in self.relation_module.parameters():
+                p.requires_grad = False
+            for p in self.scene_init_proj.parameters():
+                p.requires_grad = False
+            for p in self.scene_proj.parameters():
+                p.requires_grad = False
 
         if self.stage == 1:
             for p in self.relation_module.parameters():
                 p.requires_grad = False
-            # for p in self.scene_proj.parameters():
-            #     p.requires_grad = False
             for p in self.pos_proj.parameters():
                 p.requires_grad = False
-            # for p in self.pos_embedding.parameters():
-            #     p.requires_grad = False
-        # for p in self.relation_module.parameters():
-        #     p.requires_grad = False
-        # else:
-        #     for p in self.size_color_proj.parameters():
-        #         p.requires_grad = False
-        #     for p in self.scene_proj.parameters():
-        #         p.requires_grad = False
-        # else:
-        #     for p in self.size_color_proj.parameters():
-        #         p.requires_grad = False
-        #     for p in self.scene_proj.parameters():
-        #         p.requires_grad = False
+                
 
         with open(self.system_path, "r") as f:
             self.system = "\n".join([x.strip() for x in f.readlines()])
@@ -267,7 +279,7 @@ class Chat3D(nn.Module):
         # print_grad_status(self)
 
     def prepare_fixed_embed(self):
-        prompt = self.system + " " + self.role[0] + ": " + self.instruction
+        prompt = self.system + " " + self.instruction + ' ' + self.role[0] + ": " 
         p_0, p_1 = prompt.split("<REPLACE>")
         p_0_token = self.llama_tokenizer(p_0, return_tensors="pt", add_special_tokens=True)
         p_1_token = self.llama_tokenizer(p_1, return_tensors="pt", add_special_tokens=False)
@@ -277,13 +289,16 @@ class Chat3D(nn.Module):
 
     def get_text_emb(self, text, device="cpu"):
         text_tokens = self.llama_tokenizer(text, return_tensors="pt", add_special_tokens=False).to(device)
-        indices = text_tokens.input_ids >= self.ori_vocab_size
         embeds = self.llama_model.model.embed_tokens(text_tokens.input_ids)
-        indices = (indices * 1).unsqueeze(-1)
-        embeds = (1 - indices) * embeds.detach() + indices * embeds
+        if self.train_emb:
+            indices = text_tokens.input_ids >= self.ori_vocab_size
+            indices = (indices * 1).unsqueeze(-1)
+            embeds = (1 - indices) * embeds.detach() + indices * embeds
+        else:
+            embeds = embeds.detach()
         return embeds
 
-    def encode_object_feat(self, feat, locs, colors):
+    def encode_object_feat(self, feat, img_feat, locs):
         # size_emb = self.coord_proj(locs[:, :, 3:6])
         # gmm_weights = colors[..., :1]
         # gmm_means = colors[..., 1:]
@@ -291,7 +306,8 @@ class Chat3D(nn.Module):
         # color_emb = self.color_proj(gmm_colors)
         # feat = torch.cat([feat, size_emb, color_emb], dim=-1)
         feat = torch.nn.functional.normalize(feat, dim=-1)
-        return feat
+        img_feat = torch.nn.functional.normalize(img_feat, dim=-1)
+        return feat, img_feat
     
     @staticmethod
     def get_dist_attention(pos, dist_exp=1):
@@ -301,51 +317,48 @@ class Chat3D(nn.Module):
         dist_attn = torch.nn.functional.softmax(-dist, dim=-1)
         return dist_attn
 
-    # def prepare_object_list(self, max_obj_num=150):
-    #     tmp_id = 0
-    #     embed_list = []
-    #     obj_index_list = []
-    #     for i in range(max_obj_num):
-    #         text = f"<OBJ{i:03}>"
-    #         text_embeds = self.get_text_emb(text).squeeze(0)
-    #         tmp_id += text_embeds.shape[0]
-    #         obj_index_list.append(tmp_id)
-    #         if self.add_scene_token:
-    #             embed_list.extend([text_embeds, torch.zeros((2, text_embeds.shape[-1]))])
-    #             tmp_id += 2
-    #         else:
-    #             embed_list.extend([text_embeds, torch.zeros((1, text_embeds.shape[-1]))])
-    #             tmp_id += 1
-    #     return torch.cat(embed_list, dim=0), obj_index_list
-    
-    # def insert_object_embed(self, embed_1, embed_2, scene_mask, detach_mask=None):
-    #     if detach_mask is not None:
-    #         embed_1_detached = CustomGradLayer.apply(embed_1[detach_mask], self.grad_scale)
-    #         embed_1[detach_mask] = embed_1_detached
-    #         if embed_2 is not None:
-    #             embed_2_detached = CustomGradLayer.apply(embed_2[detach_mask], self.grad_scale)
-    #             embed_2[detach_mask] = embed_2_detached
-    #     obj_num = int(scene_mask.sum())
-    #     mx_ind = self.object_list_ind[obj_num - 1] + (2 if self.add_scene_token else 1)
-    #     object_list_embed = self.object_list_embed[:mx_ind, :].to(embed_1.device)
-    #     object_list_ind = torch.tensor(self.object_list_ind[:obj_num], dtype=torch.long)\
-    #         .to(embed_1.device)
-    #     object_list_embed[object_list_ind] = embed_1[scene_mask.bool()].to(object_list_embed.dtype)
-    #     if self.add_scene_token:
-    #         object_list_embed[object_list_ind+1] = embed_2[scene_mask.bool()].to(object_list_embed.dtype)
-    #     return object_list_embed
-
-    def get_object_list_embed(self, embed_1, embed_2, scene_mask):
+    def get_object_list_embed(self, embed_obj, embed_img, embed_scene, scene_mask):
         valid_ids = torch.where(scene_mask == 1)[0].tolist()
-        embed_list = []
-        for idx in valid_ids:
-            id_embed = self.get_text_emb(f"<OBJ{idx:03}>", device=embed_1.device).squeeze(0).squeeze(0)
-            if embed_2 is None:
-                embed_list.append(torch.stack([id_embed, embed_1[idx]], dim=0))
-            else:
-                embed_list.append(torch.stack([id_embed, embed_1[idx], embed_2[idx]], dim=0))
-        random.shuffle(embed_list)
-        object_list_embed = torch.cat(embed_list, dim=0)
+        if len(valid_ids) == 1:
+            object_list_embed = []
+            objid_embeds = self.llama_model.model.embed_tokens.weight[self.objid_start_idx:self.objid_end_idx]
+            object_list_embed.append(objid_embeds[random.randint(0, 199)])
+            object_list_embed.append(embed_obj[0])
+            # if random.randint(0, 1) == 0:
+            #     object_list_embed.append(embed_scene[0])
+            object_list_embed = torch.stack(object_list_embed, dim=0)
+        
+        random.shuffle(valid_ids)
+        objid_embeds = self.llama_model.model.embed_tokens.weight[self.objid_start_idx:self.objid_end_idx]  # 200 * 4096
+        if not self.train_emb:
+            objid_embeds = objid_embeds.detach()
+        selected_objid_embeds = objid_embeds[valid_ids]
+        # if self.no_obj:
+        #     object_list_embed = torch.zeros((selected_objid_embeds.shape[0] * 3, selected_objid_embeds.shape[1]), dtype=selected_objid_embeds.dtype, device=selected_objid_embeds.device)
+        #     object_list_embed[0::3, :] = selected_objid_embeds
+        #     object_list_embed[1::3, :] = embed_img[valid_ids]
+        #     object_list_embed[2::3, :] = embed_scene[valid_ids]
+        #     return object_list_embed
+        if embed_img is None and embed_scene is None:
+            object_list_embed = torch.zeros((selected_objid_embeds.shape[0] * 2, selected_objid_embeds.shape[1]), dtype=selected_objid_embeds.dtype, device=selected_objid_embeds.device)
+            object_list_embed[0::2, :] = selected_objid_embeds
+            object_list_embed[1::2, :] = embed_obj[valid_ids]
+        if embed_img is None and embed_scene is not None:
+            object_list_embed = torch.zeros((selected_objid_embeds.shape[0] * 3, selected_objid_embeds.shape[1]), dtype=selected_objid_embeds.dtype, device=selected_objid_embeds.device)
+            object_list_embed[0::3, :] = selected_objid_embeds
+            object_list_embed[1::3, :] = embed_obj[valid_ids]
+            object_list_embed[2::3, :] = embed_scene[valid_ids]
+        if embed_img is not None and embed_scene is None:
+            object_list_embed = torch.zeros((selected_objid_embeds.shape[0] * 3, selected_objid_embeds.shape[1]), dtype=selected_objid_embeds.dtype, device=selected_objid_embeds.device)
+            object_list_embed[0::3, :] = selected_objid_embeds
+            object_list_embed[1::3, :] = embed_obj[valid_ids]
+            object_list_embed[2::3, :] = embed_img[valid_ids]
+        if embed_img is not None and embed_scene is not None:
+            object_list_embed = torch.zeros((selected_objid_embeds.shape[0] * 4, selected_objid_embeds.shape[1]), dtype=selected_objid_embeds.dtype, device=selected_objid_embeds.device)
+            object_list_embed[0::4, :] = selected_objid_embeds
+            object_list_embed[1::4, :] = embed_obj[valid_ids]
+            object_list_embed[2::4, :] = embed_img[valid_ids]
+            object_list_embed[3::4, :] = embed_scene[valid_ids]
         return object_list_embed
 
     def forward_stage1(self, scene_feat, scene_locs, scene_colors, target_captions, is_eval=False, **kwargs):
@@ -388,49 +401,49 @@ class Chat3D(nn.Module):
             target_norm=target_embeds.norm(dim=-1).mean().detach().cpu(),
             l2_dis=l2_loss.detach().cpu()
         )
+    
+    def get_min_max_coord(self, xyz, scene_mask):
+        scene_mask = scene_mask.unsqueeze(-1).expand_as(xyz)
+        masked_xyz_min = torch.where(scene_mask > 0, xyz, torch.full_like(xyz, float('inf')))
+        masked_xyz_max = torch.where(scene_mask > 0, xyz, torch.full_like(xyz, float('-inf')))
+        mins = masked_xyz_min.min(dim=1)[0]
+        maxs = masked_xyz_max.max(dim=1)[0]
+        return mins, maxs
 
-    def forward_stage2(self, scene_feat, scene_locs, scene_colors, scene_mask, obj_ids, questions, answers, is_eval=False, **kwargs):
-        object_embed = self.encode_object_feat(scene_feat, scene_locs, scene_colors)
+    def forward_stage2(self, scene_feat, scene_img_feat, scene_locs, scene_mask, obj_ids, questions, answers, is_eval=False, **kwargs):
+        object_embed, object_img_embed = self.encode_object_feat(scene_feat, scene_img_feat, scene_locs)
         device = object_embed.device
         batch_size = object_embed.shape[0]
         proj_object_embed = self.object_proj(object_embed)
-        # norm_object_embed = torch.nn.functional.normalize(proj_object_embed, dim=-1) * self.object_norm
-        norm_object_embed = proj_object_embed
+        proj_object_img_embed = self.object_img_proj(object_img_embed)
+
         proj_scene_embed = None
         if self.add_scene_token:  # remember to change the evaluate 
-            pos_embed = self.pos_proj(scene_locs[:, :, :3] / 10)
-            # scene_embed = (proj_object_embed.detach() + pos_embed) / math.sqrt(2)
-
-            # scene_embed = scene_embed.mean(dim=1, keepdim=True).repeat(1, scene_embed.shape[1], 1)
-            # proj_scene_embed = scene_embed - proj_object_embed
-
-            # scene_embed = self.relation_module(scene_embed, scene_locs, scene_mask.bool())
-
-            proj_scene_embed = pos_embed
-
-            # norm_scene_embed = torch.nn.functional.normalize(proj_scene_embed, dim=-1) * self.scene_norm_scale
-            norm_scene_embed = proj_scene_embed
+            # if self.add_img_token:
+            #     object_embed = object_embed + object_img_embed
+            obj_embed = self.scene_init_proj(object_embed)
+            mins, maxs = self.get_min_max_coord(scene_locs[:, :, :3], scene_mask)
+            pos_embed = self.pos_embedding(scene_locs[:, :, :3], input_range=[mins, maxs])
+            pos_embed = self.pos_proj(pos_embed)
+            scene_embed = obj_embed + pos_embed
+            scene_embed = self.relation_module(scene_embed, src_key_padding_mask=~(scene_mask.bool()))
+            proj_scene_embed = self.scene_proj(scene_embed)
+        
         input_embed_list, attn_list, target_list = [], [], []
         max_seq_len = 0
+        p_0_embed = self.p_0_embed.to(device)
+        p_1_embed = self.p_1_embed.to(device)
+
         for i, question in enumerate(questions):
             prompt = f" {question} {self.role[1]}: "
             prompt_embed = self.get_text_emb(prompt, device=device).squeeze(0)
-            # prompt_token = self.llama_tokenizer(prompt, return_tensors="pt", add_special_tokens=False).to(device)
-            # prompt_embed = self.llama_model.model.embed_tokens(prompt_token.input_ids).detach().squeeze(0)
-            # object_list_embed = self.get_object_list_embed(scene_embed[i], scene_mask[i])
-            # detach_mask = None
-            # object_list_embed = self.insert_object_embed(norm_object_embed[i], norm_scene_embed[i] if self.add_scene_token else None, scene_mask[i], detach_mask[i] if detach_mask is not None else None)
-            object_list_embed = self.get_object_list_embed(norm_object_embed[i], norm_scene_embed[i] if self.add_scene_token else None, scene_mask[i])
-            # for j in range(obj_num):
-            #     start_ind = self.object_list_ind[j]
-            #     assert object_list_embed[start_ind].abs().sum() < 1e-6, (start_ind, object_list_embed[start_ind].sum())
-            #     assert object_list_embed[start_ind+1].abs().sum() < 1e-6, (start_ind+1, object_list_embed[start_ind+1].sum())
-            #     object_list_embed[start_ind:start_ind+1, :] = scene_embed[i][j]
-            #     object_list_embed[start_ind+1:start_ind+2, :] = pos_embed[i][j]
-
-            p_0_embed = self.p_0_embed.to(device)
-            p_1_embed = self.p_1_embed.to(device)
-
+            object_list_embed = self.get_object_list_embed(
+                proj_object_embed[i], 
+                proj_object_img_embed[i] if self.add_img_token else None, 
+                proj_scene_embed[i] if self.add_scene_token else None, 
+                scene_mask[i]
+            )
+            # object_list_embed = nclamp(object_list_embed, min=-0.05, max=0.05)
             wrapped_embed = torch.cat([p_0_embed, object_list_embed, p_1_embed, prompt_embed], dim=0)
             wrapped_attn = torch.ones(wrapped_embed.size()[:-1], dtype=torch.long).to(wrapped_embed.device)
             empty_target = (
@@ -453,20 +466,31 @@ class Chat3D(nn.Module):
             attn_list.append(attn)
             target_list.append(target)
             max_seq_len = max(max_seq_len, target.shape[0])
-            
-        dim = norm_object_embed.shape[2]
-        max_seq_len = min(512, max_seq_len)
+        
+        max_seq_len = min(768, max_seq_len)
 
-        input_embeds = torch.zeros([batch_size, max_seq_len, dim], dtype=input_embed_list[0].dtype).to(device)
-        attention_mask = torch.zeros([batch_size, max_seq_len], dtype=attn_list[0].dtype).to(device)
-        targets = torch.zeros([batch_size, max_seq_len], dtype=target_list[0].dtype).to(device).fill_(-100)
-        for i in range(len(input_embed_list)):
-            input_embed = input_embed_list[i]
-            attn = attn_list[i]
-            target = target_list[i]
-            input_embeds[i, :min(input_embed.shape[0], max_seq_len), :] = input_embed[:min(input_embed.shape[0], max_seq_len)]
-            attention_mask[i, :min(attn.shape[0], max_seq_len)] = attn[:min(input_embed.shape[0], max_seq_len)]
-            targets[i, :min(target.shape[0], max_seq_len)] = target[:min(input_embed.shape[0], max_seq_len)]
+        def pad_and_trim(tensor_list, max_len, batch_first=True, padding_value=0):
+            padded = pad_sequence(tensor_list, batch_first=batch_first, padding_value=padding_value)
+            if padded.shape[1] > max_len:
+                return padded[:, :max_len]
+            return padded
+        
+        input_embeds = pad_and_trim(input_embed_list, max_seq_len, batch_first=True, padding_value=0).to(device)
+        attention_mask = pad_and_trim(attn_list, max_seq_len, batch_first=True, padding_value=0).to(device)
+        targets = pad_and_trim(target_list, max_seq_len, batch_first=True, padding_value=-100).to(device)
+
+
+        
+        # input_embeds = torch.zeros([batch_size, max_seq_len, dim], dtype=input_embed_list[0].dtype).to(device)
+        # attention_mask = torch.zeros([batch_size, max_seq_len], dtype=attn_list[0].dtype).to(device)
+        # targets = torch.zeros([batch_size, max_seq_len], dtype=target_list[0].dtype).to(device).fill_(-100)
+        # for i in range(len(input_embed_list)):
+        #     input_embed = input_embed_list[i]
+        #     attn = attn_list[i]
+        #     target = target_list[i]
+        #     input_embeds[i, :min(input_embed.shape[0], max_seq_len), :] = input_embed[:min(input_embed.shape[0], max_seq_len)]
+        #     attention_mask[i, :min(attn.shape[0], max_seq_len)] = attn[:min(input_embed.shape[0], max_seq_len)]
+        #     targets[i, :min(target.shape[0], max_seq_len)] = target[:min(input_embed.shape[0], max_seq_len)]
 
         with self.maybe_autocast():
             outputs = self.llama_model(
@@ -479,56 +503,43 @@ class Chat3D(nn.Module):
         return dict(
             loss=outputs.loss,
             obj_norm=proj_object_embed.norm(dim=-1).mean().detach().cpu(),
+            obj_img_norm=proj_object_img_embed.norm(dim=-1).mean().detach().cpu(),
             scene_norm=proj_scene_embed.norm(dim=-1).mean().detach().cpu() if proj_scene_embed is not None else 0.,
             max_seq_len=max_seq_len
         )
 
-    def evaluate(self, scene_feat, scene_locs, scene_colors, scene_mask, custom_prompt, is_eval=True, **kwargs):
-        object_embed = self.encode_object_feat(scene_feat, scene_locs, scene_colors)
+    def evaluate(self, scene_feat, scene_img_feat, scene_locs, scene_mask, custom_prompt, is_eval=True, **kwargs):
+        object_embed, object_img_embed = self.encode_object_feat(scene_feat, scene_img_feat, scene_locs)
         device = object_embed.device
         batch_size, obj_num = object_embed.shape[:2]
         proj_object_embed = self.object_proj(object_embed)
-        # norm_object_embed = torch.nn.functional.normalize(proj_object_embed, dim=-1) * self.object_norm
-        norm_object_embed = proj_object_embed
+        proj_object_img_embed = self.object_img_proj(object_img_embed)
         if self.add_scene_token:
-            pos_embed = self.pos_proj(scene_locs[:, :, :3] / 10)
-            # scene_embed = (proj_object_embed.detach() + pos_embed) / math.sqrt(2)
-
-            # scene_embed = scene_embed.mean(dim=1, keepdim=True).repeat(1, scene_embed.shape[1], 1)
-            # proj_scene_embed = scene_embed - proj_object_embed
-
-            # scene_embed = self.relation_module(scene_embed, scene_locs, scene_mask.bool())
-            proj_scene_embed = pos_embed
-
-            # norm_scene_embed = torch.nn.functional.normalize(proj_scene_embed, dim=-1) * self.scene_norm_scale
-            norm_scene_embed = proj_scene_embed
+            # if self.add_img_token:
+            #     object_embed = object_embed + object_img_embed
+            obj_embed = self.scene_init_proj(object_embed)
+            mins, maxs = self.get_min_max_coord(scene_locs[:, :, :3], scene_mask)
+            pos_embed = self.pos_embedding(scene_locs[:, :, :3], input_range=[mins, maxs])
+            pos_embed = self.pos_proj(pos_embed)
+            scene_embed = obj_embed + pos_embed
+            scene_embed = self.relation_module(scene_embed, src_key_padding_mask=~(scene_mask.bool()))
+            proj_scene_embed = self.scene_proj(scene_embed)
 
         output_texts = []
+        p_0_embed = self.p_0_embed.to(device).unsqueeze(0)
+        p_1_embed = self.p_1_embed.to(device).unsqueeze(0)
         for i in range(batch_size):
-            # tmp_scene_embed, _ = self.prompt_wrap(pc_embed[idx:idx+1], scene_embed[idx:idx+1], scene_attn[idx:idx+1], custom_prompt[idx], is_eval)
             tmp_prompt = f" {custom_prompt[i]} {self.role[1]}: "
             prompt_embed = self.get_text_emb(tmp_prompt, device=device)
-            # p_0, p_1 = custom_prompt[i].split("<REPLACE>")
-            # p_0_token = self.llama_tokenizer(p_0, return_tensors="pt", add_special_tokens=True).to(device)
-            # p_1_token = self.llama_tokenizer(p_1, return_tensors="pt", add_special_tokens=False).to(device)
-            # p_0_embed = self.llama_model.model.embed_tokens(p_0_token.input_ids)
-            # p_1_embed = self.llama_model.model.embed_tokens(p_1_token.input_ids)
-            p_0_embed = self.p_0_embed.to(device).unsqueeze(0)
-            p_1_embed = self.p_1_embed.to(device).unsqueeze(0)
-
-            # object_list_embed = self.insert_object_embed(norm_object_embed[i], norm_scene_embed[i] if self.add_scene_token else None, scene_mask[i])
-            object_list_embed = self.get_object_list_embed(norm_object_embed[i], norm_scene_embed[i] if self.add_scene_token else None, scene_mask[i])
-
-            # for j in range(obj_num):
-            #     start_ind = self.object_list_ind[j]
-            #     object_list_embed[start_ind:start_ind + 1, :] = scene_embed[i][j]
-            #     object_list_embed[start_ind + 1:start_ind + 2, :] = pos_embed[i][j]
+            object_list_embed = self.get_object_list_embed(
+                proj_object_embed[i], 
+                proj_object_img_embed[i] if self.add_img_token else None, 
+                proj_scene_embed[i] if self.add_scene_token else None, 
+                scene_mask[i]
+            )
             object_list_embed = object_list_embed.unsqueeze(0)
+            # object_list_embed = nclamp(object_list_embed, min=-0.05, max=0.05)
             wrapped_embed = torch.cat([p_0_embed, object_list_embed, p_1_embed, prompt_embed], dim=1)
-            # stop_words_ids = [torch.tensor([835]).to(wrapped_embed.device),
-            #                   torch.tensor([2277, 29937]).to(wrapped_embed.device)]
-            # stopping_criteria = StoppingCriteriaList([StoppingCriteriaSub(stops=stop_words_ids)])
-
             with self.maybe_autocast():
                 outputs = self.llama_model.generate(
                     inputs_embeds=wrapped_embed,
@@ -543,10 +554,6 @@ class Chat3D(nn.Module):
                     temperature=1.0,
                 )
             output_token = outputs[0]
-            # if output_token[0] == 0:  # the model might output an unknown token <unk> at the beginning. remove it
-            #     output_token = output_token[1:]
-            # if output_token[0] == 1:  # some users find that there is a start token <s> at the beginning. remove it
-            #     output_token = output_token[1:]
             output_text = self.llama_tokenizer.decode(output_token)
             output_text = output_text.split(self.end_sym)[0]
             output_text = output_text.replace('  ', ' ').replace(' .', '.').strip()
@@ -568,7 +575,7 @@ class Chat3D(nn.Module):
     def _get_text_len(self, text):
         return self.llama_tokenizer(text, return_tensors="pt").input_ids.shape[1]
 
-    def maybe_autocast(self, dtype=torch.float16):
+    def maybe_autocast(self, dtype=torch.bfloat16):
         # if on cpu, don't use autocast
         # if on gpu, use autocast with dtype if provided, otherwise use torch.float16
         enable_autocast = self.device != torch.device("cpu")

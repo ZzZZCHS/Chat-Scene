@@ -66,7 +66,7 @@ def construct_bbox_corners(center, box_size):
     return corners_3d
 
 
-output_file = "/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/20240325_031151_dp0.1_lr1e-5_sta2_ep10_scenealign_special_trainemb/preds_epoch2_step4203.json"
+output_file = "/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/20240401_034453_dp0.1_lr5e-6_sta2_ep3_objalign+objcaption_grounding+caption+regioncaption+qa_addimg_layernorm1_scenedim256_grounding_0/preds_epoch2_step2826.json"
 outputs = json.load(open(output_file, "r"))
 
 

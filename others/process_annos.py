@@ -85,7 +85,7 @@ for anno in tqdm.tqdm(annos):
             "scene_id": scene_id,
             "obj_id": obj_id,
             "prompt": prompt,
-            "caption": f"<OBJ{obj_id:02}>."
+            "caption": f"<OBJ{obj_id:03}>."
         })
     else:
         for caption in anno["ref_captions"]:

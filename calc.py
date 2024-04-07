@@ -2,7 +2,8 @@ import json
 import sys
 replace_list = [["10", "ten"], ["12", "twelve"], ["1", "one"], ["2", "two"], ["3", "three"], ["4", "four"], ["5", "five"],
                 ["6", "six"], ["7", "seven"], ["8", "eight"], ["9", "nine"]]
-outputs = json.load(open("outputs/2023-11-10-210510_dp0.1_lr2e-4_sta2_ep3_objscale200_scenescale50_bs1_objalign_scenealign_scanqa/preds_epoch2_step17070.json", "r"))
+# outputs = json.load(open("/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/preds_epoch2_step17070.json", "r"))
+outputs = json.load(open("/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/20240404_233216_dp0.1_lr5e-6_sta2_ep5_objalign+objcaption+grounding+caption+regioncaption+qa_scanqa/preds_epoch-1_step0.json", "r"))
 # outputs2 = json.load(open("/root/scene-LLaMA/video_chat/video_chat/outputs/2023-09-17-215602_dp0.1_lr5e-5_sta3_ep3/preds_epoch-1_step0.json", "r"))
 # outputs.extend(outputs2)
 preds = {}
@@ -56,7 +57,6 @@ for i, output in enumerate(outputs):
 
 # print(ref_lens)
 print(len(preds))
-print("EM: ", float(acc) / len(preds))
 
 # print(preds[:1])
 # print(targets[:1])
@@ -86,7 +86,7 @@ scorers = [
     (Meteor(), "METEOR"),
     (Rouge(), "ROUGE_L"),
     (Cider(), "CIDEr"),
-    (Spice(), "SPICE")
+    # (Spice(), "SPICE")
 ]
 # scorers = [
 #     (capblue.Bleu(4), ["Bleu_1", "Bleu_2", "Bleu_3", "Bleu_4"]),
@@ -117,5 +117,7 @@ for scorer, method in scorers:
         val_results[method] = score
         # rlt[method]=score*100
 
+
+print("EM: ", float(acc) / len(preds))
 for k, v in val_results.items():
     print(f"{k}: {v}")

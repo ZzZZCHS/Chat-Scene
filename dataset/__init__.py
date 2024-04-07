@@ -14,56 +14,54 @@ logger = logging.getLogger(__name__)
 
 
 def create_dataset(config):
-    if config.model.stage == 1:
-        config_train_file = config.train_file_s1
-        config_val_file = config.val_file_s1
-        train_dataset_cls = val_dataset_cls = S1PTDataset
-    elif config.model.stage == 2:
-        config_train_file = config.train_file_s2
-        config_val_file = config.val_file_s2
-        train_dataset_cls = S2PTDataset
-        val_dataset_cls = ValPTDataset
-    elif config.model.stage == 3:
-        config_train_file = config.train_file_s3
-        config_val_file = config.val_file_s3
-        train_dataset_cls = S3PTDataset
-        val_dataset_cls = ValPTDataset
-    else:
-        raise NotImplementedError
+    # if config.model.stage == 1:
+    #     config_train_file = config.train_file_s1
+    #     config_val_file = config.val_file_s1
+    #     train_dataset_cls = val_dataset_cls = S1PTDataset
+    # elif config.model.stage == 2:
+    #     config_train_file = config.train_file_s2
+    #     config_val_file = config.val_file_s2
+    #     train_dataset_cls = S2PTDataset
+    #     val_dataset_cls = ValPTDataset
+    # elif config.model.stage == 3:
+    #     config_train_file = config.train_file_s3
+    #     config_val_file = config.val_file_s3
+    #     train_dataset_cls = S3PTDataset
+    #     val_dataset_cls = ValPTDataset
+    # else:
+    #     raise NotImplementedError
 
-    logger.info(f"train_file: {config_train_file}")
+    # logger.info(f"train_file: {config_train_file}")
+    train_dataset_cls = S2PTDataset
+    val_dataset_cls = ValPTDataset
 
-    # convert to list of lists
-    train_files = (
-        [config_train_file] if isinstance(config_train_file[0], str) else config_train_file
-    )
-    val_files = (
-        [config_val_file] if isinstance(config_val_file[0], str) else config_val_file
-    )
+    train_files = []
+    for train_name in config.train_tag.split('#'):
+        if train_name not in config.train_file_dict:
+            raise NotImplementedError
+        train_files.append(config.train_file_dict[train_name])
+    val_files = {}
+    for val_name in config.val_tag.split('#'):
+        if val_name not in config.val_file_dict:
+            raise NotImplementedError
+        val_files[val_name] = config.val_file_dict[val_name]
 
     train_datasets = []
     datasets = []
     for train_file in train_files:
-        dataset_kwargs = dict(
-            ann_file=train_file,
-            system_path=config.model.system_path,
-            stage=config.model.stage
-        )
-        datasets.append(train_dataset_cls(**dataset_kwargs))
+        datasets.append(S2PTDataset(ann_list=train_file))
     dataset = ConcatDataset(datasets)
     train_datasets.append(dataset)
 
     val_datasets = []
-    datasets = []
-    for val_file in val_files:
-        dataset_kwargs = dict(
-            ann_file=val_file,
-            system_path=config.model.system_path,
-            stage=config.model.stage
-        )
-        datasets.append(val_dataset_cls(**dataset_kwargs))
-    dataset = ConcatDataset(datasets)
-    val_datasets.append(dataset)
+    for k, v in val_files.items():
+        datasets = []
+        if type(v[0]) != list:
+            v = [v]
+        for val_file in v:
+            datasets.append(ValPTDataset(ann_list=val_file, dataset_name=k))
+        dataset = ConcatDataset(datasets)
+        val_datasets.append(dataset)
 
     return train_datasets, val_datasets
 

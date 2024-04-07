@@ -7,28 +7,38 @@ import torch
 
 from dataset.base_dataset import PTBaseDataset, process_batch_data, replace_old_id
 import glob
+import random
+from prompts.prompts import obj_caption_prompt
 
 logger = logging.getLogger(__name__)
 
 
 class ValPTDataset(PTBaseDataset):
 
-    def __init__(self, ann_file, system_path="", stage=2, **kwargs):
+    def __init__(self, ann_list, dataset_name, **kwargs):
         super().__init__()
-        self.feat_file, self.attribute_file, self.prompt_file = ann_file[:3]
-        # with open(system_path, "r") as f:
-        #     self.system = "\n".join([x.strip() for x in f.readlines()])
-        self.feats = torch.load(self.feat_file, map_location='cpu')
-        self.attributes = torch.load(self.attribute_file, map_location='cpu')
-        self.anno = json.load(open(self.prompt_file, 'r'))
+        self.dataset_name = dataset_name
+        feat_file, img_feat_file, attribute_file, anno_file = ann_list[:4]
+        self.feats = torch.load(feat_file, map_location='cpu')
+        self.img_feats = torch.load(img_feat_file, map_location='cpu') if img_feat_file is not None else None
+        self.attributes = torch.load(attribute_file, map_location='cpu') if attribute_file is not None else None
+        self.anno = json.load(open(anno_file, 'r'))
+        if self.attributes is None:
+            self.scene_feats = self.feats
+            self.scene_img_feats = self.scene_masks = None
+        else:
+            self.scene_feats, self.scene_img_feats, self.scene_masks = self.prepare_scene_features()
 
     def __len__(self):
         return len(self.anno)
 
     def __getitem__(self, index):
-        scene_id, obj_id, scene_feat, scene_locs, scene_colors = self.get_anno(index)
+        scene_id, obj_id, scene_feat, scene_img_feat, scene_mask, scene_locs = self.get_anno(index)
         # prompt = self.system + self.prompt_template.format(self.anno[index]["prompt"])
-        prompt = self.anno[index]["prompt"]
+        if 'prompt' not in self.anno[index]:
+            prompt = random.choice(obj_caption_prompt)
+        else:
+            prompt = self.anno[index]["prompt"]
         ref_captions = self.anno[index]["ref_captions"].copy() if "ref_captions" in self.anno[index] else []
         qid = self.anno[index]["qid"] if "qid" in self.anno[index] else 0
         obj_num = scene_locs.shape[0]
@@ -64,17 +74,22 @@ class ValPTDataset(PTBaseDataset):
         #         scene_feat = scene_feat[final_mask.bool()]
         #         scene_locs = scene_locs[final_mask.bool()]
         #         scene_colors = scene_colors[final_mask.bool()]
-        return scene_feat, scene_locs, scene_colors, obj_id, prompt, ref_captions, scene_id, qid
+        return scene_feat, scene_img_feat, scene_mask, scene_locs, obj_id, prompt, ref_captions, scene_id, qid
 
 
 def valuate_collate_fn(batch):
-    scene_feats, scene_locs, scene_colors, obj_ids, prompts, ref_captions, scene_ids, qids = zip(*batch)
-    batch_scene_feat, batch_scene_locs, batch_scene_colors, batch_scene_mask = process_batch_data(scene_feats, scene_locs, scene_colors)
+    scene_feats, scene_img_feats, scene_masks, scene_locs, obj_ids, prompts, ref_captions, scene_ids, qids = zip(*batch)
+    batch_scene_feat, batch_scene_img_feat, batch_scene_locs, batch_scene_mask = process_batch_data(
+        scene_feats,
+        scene_img_feats, 
+        scene_masks,
+        scene_locs,
+    )
     obj_ids = torch.tensor(obj_ids)
     return {
         "scene_feat": batch_scene_feat,
+        "scene_img_feat": batch_scene_img_feat,
         "scene_locs": batch_scene_locs,
-        "scene_colors": batch_scene_colors,
         "scene_mask": batch_scene_mask,
         "obj_id": obj_ids,
         "custom_prompt": prompts,

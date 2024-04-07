@@ -216,31 +216,30 @@ class MultiHeadAttentionSpatial(nn.Module):
 
 class TransformerSpatialDecoderLayer(nn.Module):
     def __init__(
-            self, d_model, nhead, dim_head, dim_feedforward, dropout,
+            self, d_model, nhead, dim_feedforward, dropout,
             spatial_multihead=True, spatial_dim=5, spatial_attn_fusion='mul'
     ):
         super().__init__()
-        # nhead = d_model // 64
         self.self_attn = MultiHeadAttentionSpatial(
-            d_model, nhead, dim_head, dropout=dropout,
+            d_model, nhead, dropout=dropout,
             spatial_multihead=spatial_multihead,
             spatial_dim=spatial_dim,
             spatial_attn_fusion=spatial_attn_fusion,
         )
-        # self.multihead_attn = nn.MultiheadAttention(
-        #     d_model, nhead, dropout=dropout, batch_first=True
-        # )
+        self.multihead_attn = nn.MultiheadAttention(
+            d_model, nhead, dropout=dropout, batch_first=True
+        )
         # Implementation of Feedforward model
         self.linear1 = nn.Linear(d_model, dim_feedforward)
         self.dropout = nn.Dropout(dropout)
         self.linear2 = nn.Linear(dim_feedforward, d_model)
 
-        # self.norm1 = nn.LayerNorm(d_model)
-        # self.norm2 = nn.LayerNorm(d_model)
-        # self.norm3 = nn.LayerNorm(d_model)
-        # self.dropout1 = nn.Dropout(dropout)
-        # self.dropout2 = nn.Dropout(dropout)
-        # self.dropout3 = nn.Dropout(dropout)
+        self.norm1 = nn.LayerNorm(d_model)
+        self.norm2 = nn.LayerNorm(d_model)
+        self.norm3 = nn.LayerNorm(d_model)
+        self.dropout1 = nn.Dropout(dropout)
+        self.dropout2 = nn.Dropout(dropout)
+        self.dropout3 = nn.Dropout(dropout)
 
         self.activation = nn.GELU()
 
@@ -248,18 +247,19 @@ class TransformerSpatialDecoderLayer(nn.Module):
             self, tgt, tgt_pairwise_locs,
             tgt_key_padding_mask=None,
     ):
+        tgt2 = self.norm1(tgt)
         tgt2 = self.self_attn(
-            tgt, tgt, tgt, tgt_pairwise_locs,
+            tgt2, tgt2, tgt2, tgt_pairwise_locs,
             key_padding_mask=tgt_key_padding_mask,
         )
-        tgt = (tgt + tgt2) / math.sqrt(2)
+        tgt = tgt + self.dropout(tgt2)
         # tgt2 = self.norm2(tgt)
-        # tgt2, cross_attn_matrices = self.multihead_attn(
-        #     query=tgt2, key=memory,
-        #     value=memory, attn_mask=memory_mask,
+        # tgt2, _ = self.multihead_attn(
+        #     query=tgt2, key=tgt,
+        #     value=tgt, attn_mask=memory_mask,
         #     key_padding_mask=memory_key_padding_mask
         # )
-        # tgt = tgt + self.dropout2(tgt2)
+        # tgt = tgt + self.dropout2(tgt2) sqrt(4096)
         # tgt2 = self.norm3(tgt)
         # tgt2 = self.linear2(self.dropout(self.activation(self.linear1(tgt2))))
         # tgt = tgt + self.dropout3(tgt2)
@@ -279,17 +279,16 @@ class CMT(nn.Module):
         super().__init__()
 
         decoder_layer = TransformerSpatialDecoderLayer(
-            d_model=hidden_size, nhead=8, dim_head=64,
+            d_model=hidden_size, nhead=16,
             dim_feedforward=4096, dropout=0.1
         )
         self.layers = _get_clones(decoder_layer, num_layers)
 
-        # loc_layer = nn.Sequential(
-        #     nn.Linear(6, hidden_size),
-        #     nn.ReLU(),
-        #     nn.LayerNorm(hidden_size)
-        # )
-        # self.loc_layers = _get_clones(loc_layer, 1)
+        loc_layer = nn.Sequential(
+            nn.Linear(6, hidden_size),
+            nn.LayerNorm(hidden_size)
+        )
+        self.loc_layers = _get_clones(loc_layer, 1)
 
         self.apply(self._init_weights)
 
@@ -298,7 +297,7 @@ class CMT(nn.Module):
         if isinstance(module, nn.Linear):
             # Slightly different from the TF version which uses truncated_normal for initialization
             # cf https://github.com/pytorch/pytorch/pull/5617
-            module.weight.data.normal_(mean=0.0, std=0.01)
+            module.weight.data.normal_(mean=0.0, std=0.02)
             if module.bias is not None:
                 module.bias.data.zero_()
         elif isinstance(module, nn.Embedding):
@@ -314,8 +313,8 @@ class CMT(nn.Module):
                         - einops.repeat(obj_centers, 'b l d -> b 1 l d')
         pairwise_dists = torch.sqrt(torch.sum(pairwise_locs ** 2, 3) + eps)  # (b, l, l)
 
-        # max_dists = torch.max(pairwise_dists.view(pairwise_dists.size(0), -1), dim=1)[0]
-        norm_pairwise_dists = pairwise_dists #/ einops.repeat(max_dists, 'b -> b 1 1')
+        max_dists = torch.max(pairwise_dists.view(pairwise_dists.size(0), -1), dim=1)[0]
+        norm_pairwise_dists = pairwise_dists / einops.repeat(max_dists, 'b -> b 1 1')
 
         pairwise_dists_2d = torch.sqrt(torch.sum(pairwise_locs[..., :2] ** 2, 3) + eps)
         pairwise_locs = torch.stack(
@@ -335,8 +334,8 @@ class CMT(nn.Module):
 
         out_embeds = obj_embeds
         for i, layer in enumerate(self.layers):
-            # query_pos = self.loc_layers[0](obj_locs)
-            # out_embeds = out_embeds + query_pos
+            query_pos = self.loc_layers[0](obj_locs)
+            out_embeds = out_embeds + query_pos
             out_embeds = layer(
                 out_embeds, pairwise_locs,
                 tgt_key_padding_mask=obj_masks.logical_not(),

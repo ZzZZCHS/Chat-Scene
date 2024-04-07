@@ -61,7 +61,7 @@ def shift_scale_points(pred_xyz, src_range, dst_range=None):
     src_diff = src_range[1][:, None, :] - src_range[0][:, None, :]
     dst_diff = dst_range[1][:, None, :] - dst_range[0][:, None, :]
     prop_xyz = (
-        ((pred_xyz - src_range[0][:, None, :]) * dst_diff) / src_diff
+        ((pred_xyz - src_range[0][:, None, :]) * dst_diff) / (src_diff + 1e-7)
     ) + dst_range[0][:, None, :]
     return prop_xyz
 

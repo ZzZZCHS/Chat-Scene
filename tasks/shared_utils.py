@@ -82,6 +82,11 @@ def setup_model(
             config.resume = True
         else:
             logger.info(f"Not found checkpoint in {config.output_dir}")
+    
+    if osp.isfile(config.img_projector_path):
+        img_projector_sd = torch.load(config.img_projector_path, map_location="cpu")
+        msg = model_without_ddp.object_img_proj.load_state_dict(img_projector_sd)
+        logger.info(f"Loaded pretrained image projector from {config.img_projector_path}.")
 
     if osp.isfile(config.pretrained_path):
         checkpoint = torch.load(config.pretrained_path, map_location="cpu")
@@ -93,21 +98,19 @@ def setup_model(
             scaler.load_state_dict(checkpoint["scaler"])
             start_epoch = checkpoint["epoch"] + 1
             global_step = checkpoint["global_step"]
-
-        # for k in list(state_dict.keys()):
-        #     if "relation_module" in k:
-        #         del state_dict[k]
-
+        keys_to_delete = []
+        for name, param  in state_dict.items():
+            if name not in model_without_ddp.state_dict():
+                continue
+            if param.size() != model_without_ddp.state_dict()[name].size():
+                keys_to_delete.append(name)
+        for key in keys_to_delete:
+            del state_dict[key]
         msg = model_without_ddp.load_state_dict(state_dict, strict=False)
-        # object_proj_dict = {}
-        # for k in state_dict.keys():
-        #     if "object_proj" in k:
-        #         object_proj_dict[k.split("object_proj.")[1]] = state_dict[k]
-        # model_without_ddp.scene_proj.load_state_dict(object_proj_dict, strict=False)
         logger.info(msg)
-        logger.info(f"Loaded checkpoint from {config.pretrained_path}")
+        logger.info(f"Loaded checkpoint from {config.pretrained_path}.")
     else:
-        logger.warning("No pretrained checkpoint provided, training from scratch")
+        logger.warning("No pretrained checkpoint provided, training from scratch.")
 
     return (
         model,

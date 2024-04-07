@@ -6,7 +6,7 @@ import math
 import torch
 from torch import nn
 import numpy as np
-# from utils.pc_util import shift_scale_points
+from utils.pc_util import shift_scale_points
 
 
 class PositionalEmbedding(nn.Module):
@@ -30,7 +30,7 @@ class PositionEmbeddingCoordsSine(nn.Module):
     def __init__(
         self,
         temperature=10000,
-        normalize=False,
+        normalize=True,
         scale=None,
         pos_type="fourier",
         d_pos=None,
@@ -62,8 +62,8 @@ class PositionEmbeddingCoordsSine(nn.Module):
         xyz = orig_xyz.clone()
 
         ncoords = xyz.shape[1]
-        # if self.normalize:
-        #     xyz = shift_scale_points(xyz, src_range=input_range)
+        if self.normalize:
+            xyz = shift_scale_points(xyz, src_range=input_range)
 
         ndim = num_channels // xyz.shape[2]
         if ndim % 2 != 0:
@@ -121,8 +121,8 @@ class PositionEmbeddingCoordsSine(nn.Module):
         xyz = orig_xyz.clone()
 
         ncoords = xyz.shape[1]
-        # if self.normalize:
-        #     xyz = shift_scale_points(xyz, src_range=input_range)
+        if self.normalize:
+            xyz = shift_scale_points(xyz, src_range=input_range)
 
         xyz *= 2 * np.pi
         xyz_proj = torch.mm(xyz.view(-1, d_in), self.gauss_B[:, :d_out]).view(
@@ -131,7 +131,7 @@ class PositionEmbeddingCoordsSine(nn.Module):
         final_embeds = [xyz_proj.sin(), xyz_proj.cos()]
 
         # return batch x d_pos x npoints embedding
-        final_embeds = torch.cat(final_embeds, dim=2).permute(0, 2, 1)
+        final_embeds = torch.cat(final_embeds, dim=2)
         return final_embeds
 
     def forward(self, xyz, num_channels=None, input_range=None):
