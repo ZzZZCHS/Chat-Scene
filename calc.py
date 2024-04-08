@@ -3,7 +3,7 @@ import sys
 replace_list = [["10", "ten"], ["12", "twelve"], ["1", "one"], ["2", "two"], ["3", "three"], ["4", "four"], ["5", "five"],
                 ["6", "six"], ["7", "seven"], ["8", "eight"], ["9", "nine"]]
 # outputs = json.load(open("/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/preds_epoch2_step17070.json", "r"))
-outputs = json.load(open("/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/20240404_233216_dp0.1_lr5e-6_sta2_ep5_objalign+objcaption+grounding+caption+regioncaption+qa_scanqa/preds_epoch-1_step0.json", "r"))
+outputs = json.load(open("/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/20240408_024901_dp0.1_lr5e-6_sta2_ep1_objaverse#scannet_caption#scanrefer_caption#scannet_region_caption#nr3d_caption#scanrefer#obj_align#scanqa__scanqa#scanrefer#scanrefer_caption#objaverse/preds_epoch0_step6000_scanqa.json", "r"))
 # outputs2 = json.load(open("/root/scene-LLaMA/video_chat/video_chat/outputs/2023-09-17-215602_dp0.1_lr5e-5_sta3_ep3/preds_epoch-1_step0.json", "r"))
 # outputs.extend(outputs2)
 preds = {}
@@ -18,23 +18,17 @@ for i, output in enumerate(outputs):
     item_id = f"{output['scene_id']}_{output['obj_id']}_{output['qid']}_{i}"
     pred = output["pred"]
     ref_captions = output["ref_captions"]
-    if ": " in pred:
-        pred = pred.split(": ")[1].strip()
     if len(pred) > 0 and pred[-1] == ".":
         pred = pred[:-1]
     if len(pred) > 0:
         pred = pred[0].lower() + pred[1:]
-    # pred = pred[:max_len]
-    # output["ref_captions"][0] = output["ref_captions"][0][:max_len]
-    # if output["ref_captions"][0][-1] == ".":
-    #     output["ref_captions"][0] = output["ref_captions"][0][:-1]
-    for j in range(len(ref_captions)):
-        for rep in replace_list:
-            if ref_captions[j].startswith(rep[1]):
-                ref_captions[j] = ref_captions[j].replace(rep[1], rep[0])
-    for rep in replace_list:
-        if pred.startswith(rep[1]):
-            pred = pred.replace(rep[1], rep[0], 1)
+    # for j in range(len(ref_captions)):
+    #     for rep in replace_list:
+    #         if ref_captions[j].startswith(rep[1]):
+    #             ref_captions[j] = ref_captions[j].replace(rep[1], rep[0])
+    # for rep in replace_list:
+    #     if pred.startswith(rep[1]):
+    #         pred = pred.replace(rep[1], rep[0], 1)
     output["pred"] = pred
     output["ref_captions"] = ref_captions
     if pred in ref_captions:
@@ -72,7 +66,7 @@ from pycocoevalcap.bleu.bleu import Bleu
 from pycocoevalcap.meteor.meteor import Meteor
 from pycocoevalcap.rouge.rouge import Rouge
 from pycocoevalcap.cider.cider import Cider
-# from pycocoevalcap.spice.spice import Spice
+from pycocoevalcap.spice.spice import Spice
 
 from pycocoevalcap.tokenizer.ptbtokenizer import PTBTokenizer
 
@@ -86,7 +80,7 @@ scorers = [
     (Meteor(), "METEOR"),
     (Rouge(), "ROUGE_L"),
     (Cider(), "CIDEr"),
-    # (Spice(), "SPICE")
+    (Spice(), "SPICE")
 ]
 # scorers = [
 #     (capblue.Bleu(4), ["Bleu_1", "Bleu_2", "Bleu_3", "Bleu_4"]),

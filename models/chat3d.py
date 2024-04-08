@@ -317,28 +317,35 @@ class Chat3D(nn.Module):
         dist_attn = torch.nn.functional.softmax(-dist, dim=-1)
         return dist_attn
 
-    def get_object_list_embed(self, embed_obj, embed_img, embed_scene, scene_mask):
+    def get_object_list_embed(self, embed_obj, embed_img, embed_scene, scene_mask, obj_id):
         valid_ids = torch.where(scene_mask == 1)[0].tolist()
         if len(valid_ids) == 1:
             object_list_embed = []
             objid_embeds = self.llama_model.model.embed_tokens.weight[self.objid_start_idx:self.objid_end_idx]
-            object_list_embed.append(objid_embeds[random.randint(0, 199)])
-            object_list_embed.append(embed_obj[0])
-            # if random.randint(0, 1) == 0:
-            #     object_list_embed.append(embed_scene[0])
+            object_list_embed.append(objid_embeds[obj_id])
+            if not self.no_obj:
+                object_list_embed.append(embed_obj[valid_ids[0]])
+            if embed_img is not None:
+                object_list_embed.append(embed_img[valid_ids[0]])
+            if embed_scene is not None:
+                object_list_embed.append(embed_scene[valid_ids[0]])
             object_list_embed = torch.stack(object_list_embed, dim=0)
-        
         random.shuffle(valid_ids)
         objid_embeds = self.llama_model.model.embed_tokens.weight[self.objid_start_idx:self.objid_end_idx]  # 200 * 4096
         if not self.train_emb:
             objid_embeds = objid_embeds.detach()
         selected_objid_embeds = objid_embeds[valid_ids]
-        # if self.no_obj:
-        #     object_list_embed = torch.zeros((selected_objid_embeds.shape[0] * 3, selected_objid_embeds.shape[1]), dtype=selected_objid_embeds.dtype, device=selected_objid_embeds.device)
-        #     object_list_embed[0::3, :] = selected_objid_embeds
-        #     object_list_embed[1::3, :] = embed_img[valid_ids]
-        #     object_list_embed[2::3, :] = embed_scene[valid_ids]
-        #     return object_list_embed
+        if self.no_obj:
+            if embed_img is None:
+                object_list_embed = torch.zeros((selected_objid_embeds.shape[0] * 2, selected_objid_embeds.shape[1]), dtype=selected_objid_embeds.dtype, device=selected_objid_embeds.device)
+                object_list_embed[0::2, :] = selected_objid_embeds
+                object_list_embed[1::2, :] = embed_scene[valid_ids]
+            else:
+                object_list_embed = torch.zeros((selected_objid_embeds.shape[0] * 3, selected_objid_embeds.shape[1]), dtype=selected_objid_embeds.dtype, device=selected_objid_embeds.device)
+                object_list_embed[0::3, :] = selected_objid_embeds
+                object_list_embed[1::3, :] = embed_img[valid_ids]
+                object_list_embed[2::3, :] = embed_scene[valid_ids]
+            return object_list_embed
         if embed_img is None and embed_scene is None:
             object_list_embed = torch.zeros((selected_objid_embeds.shape[0] * 2, selected_objid_embeds.shape[1]), dtype=selected_objid_embeds.dtype, device=selected_objid_embeds.device)
             object_list_embed[0::2, :] = selected_objid_embeds
@@ -361,46 +368,46 @@ class Chat3D(nn.Module):
             object_list_embed[3::4, :] = embed_scene[valid_ids]
         return object_list_embed
 
-    def forward_stage1(self, scene_feat, scene_locs, scene_colors, target_captions, is_eval=False, **kwargs):
-        object_embed = self.encode_object_feat(scene_feat, scene_locs, scene_colors)
-        proj_object_embed = self.object_proj(object_embed)
-        proj_object_embed = proj_object_embed.squeeze(1)
-        # cls_output = self.cls_head(proj_object_embed)
-        # cls_loss = F.cross_entropy(cls_output, target_clses)
-        # cls_acc = (cls_output.max(dim=-1)[1] == target_clses).float().mean()
-        # norm_object_embed = torch.nn.functional.normalize(proj_object_embed, dim=-1) * self.obj_norm_scale
-        norm_object_embed = proj_object_embed
-        target_embeds = []
-        for target_caption in target_captions:
-            target_tokens = self.llama_tokenizer(
-                target_caption,
-                return_tensors="pt",
-                padding="longest",
-                truncation=True,
-                max_length=self.max_txt_len,
-                add_special_tokens=False
-            ).to(norm_object_embed.device)
-            token_mask = target_tokens["attention_mask"].unsqueeze(-1)
-            target_embed = self.llama_model.model.embed_tokens(target_tokens.input_ids)  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            target_embed = (target_embed * token_mask).sum(1) / token_mask.sum(1)
-            target_embed = target_embed.mean(dim=0)
-            target_embeds.append(target_embed)
-        target_embeds = torch.stack(target_embeds, dim=0).to(norm_object_embed.device)
-        cosine_loss = F.cosine_embedding_loss(norm_object_embed, target_embeds.detach(), torch.tensor([1]).to(norm_object_embed.device))
-        l2_loss = F.mse_loss(proj_object_embed, target_embeds.detach())
-        # print(torch.norm(pc_embed[:1], p=2), torch.norm(target_embeds[:1], p=2))
-        loss = cosine_loss
-        return dict(
-            loss=loss,
-            cosine_loss=cosine_loss,
-            # cls_loss=cls_loss,
-            l2_loss=l2_loss,
-            # cls_acc=cls_acc.detach().cpu(),
-            cosine_score=1. - cosine_loss.detach().cpu(),
-            obj_norm=proj_object_embed.norm(dim=-1).mean().detach().cpu(),
-            target_norm=target_embeds.norm(dim=-1).mean().detach().cpu(),
-            l2_dis=l2_loss.detach().cpu()
-        )
+    # def forward_stage1(self, scene_feat, scene_locs, scene_colors, target_captions, is_eval=False, **kwargs):
+    #     object_embed = self.encode_object_feat(scene_feat, scene_locs, scene_colors)
+    #     proj_object_embed = self.object_proj(object_embed)
+    #     proj_object_embed = proj_object_embed.squeeze(1)
+    #     # cls_output = self.cls_head(proj_object_embed)
+    #     # cls_loss = F.cross_entropy(cls_output, target_clses)
+    #     # cls_acc = (cls_output.max(dim=-1)[1] == target_clses).float().mean()
+    #     # norm_object_embed = torch.nn.functional.normalize(proj_object_embed, dim=-1) * self.obj_norm_scale
+    #     norm_object_embed = proj_object_embed
+    #     target_embeds = []
+    #     for target_caption in target_captions:
+    #         target_tokens = self.llama_tokenizer(
+    #             target_caption,
+    #             return_tensors="pt",
+    #             padding="longest",
+    #             truncation=True,
+    #             max_length=self.max_txt_len,
+    #             add_special_tokens=False
+    #         ).to(norm_object_embed.device)
+    #         token_mask = target_tokens["attention_mask"].unsqueeze(-1)
+    #         target_embed = self.llama_model.model.embed_tokens(target_tokens.input_ids)  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    #         target_embed = (target_embed * token_mask).sum(1) / token_mask.sum(1)
+    #         target_embed = target_embed.mean(dim=0)
+    #         target_embeds.append(target_embed)
+    #     target_embeds = torch.stack(target_embeds, dim=0).to(norm_object_embed.device)
+    #     cosine_loss = F.cosine_embedding_loss(norm_object_embed, target_embeds.detach(), torch.tensor([1]).to(norm_object_embed.device))
+    #     l2_loss = F.mse_loss(proj_object_embed, target_embeds.detach())
+    #     # print(torch.norm(pc_embed[:1], p=2), torch.norm(target_embeds[:1], p=2))
+    #     loss = cosine_loss
+    #     return dict(
+    #         loss=loss,
+    #         cosine_loss=cosine_loss,
+    #         # cls_loss=cls_loss,
+    #         l2_loss=l2_loss,
+    #         # cls_acc=cls_acc.detach().cpu(),
+    #         cosine_score=1. - cosine_loss.detach().cpu(),
+    #         obj_norm=proj_object_embed.norm(dim=-1).mean().detach().cpu(),
+    #         target_norm=target_embeds.norm(dim=-1).mean().detach().cpu(),
+    #         l2_dis=l2_loss.detach().cpu()
+    #     )
     
     def get_min_max_coord(self, xyz, scene_mask):
         scene_mask = scene_mask.unsqueeze(-1).expand_as(xyz)
@@ -441,7 +448,8 @@ class Chat3D(nn.Module):
                 proj_object_embed[i], 
                 proj_object_img_embed[i] if self.add_img_token else None, 
                 proj_scene_embed[i] if self.add_scene_token else None, 
-                scene_mask[i]
+                scene_mask[i],
+                obj_ids[i]
             )
             # object_list_embed = nclamp(object_list_embed, min=-0.05, max=0.05)
             wrapped_embed = torch.cat([p_0_embed, object_list_embed, p_1_embed, prompt_embed], dim=0)
@@ -479,7 +487,6 @@ class Chat3D(nn.Module):
         attention_mask = pad_and_trim(attn_list, max_seq_len, batch_first=True, padding_value=0).to(device)
         targets = pad_and_trim(target_list, max_seq_len, batch_first=True, padding_value=-100).to(device)
 
-
         
         # input_embeds = torch.zeros([batch_size, max_seq_len, dim], dtype=input_embed_list[0].dtype).to(device)
         # attention_mask = torch.zeros([batch_size, max_seq_len], dtype=attn_list[0].dtype).to(device)
@@ -508,7 +515,7 @@ class Chat3D(nn.Module):
             max_seq_len=max_seq_len
         )
 
-    def evaluate(self, scene_feat, scene_img_feat, scene_locs, scene_mask, custom_prompt, is_eval=True, **kwargs):
+    def evaluate(self, scene_feat, scene_img_feat, scene_locs, scene_mask, custom_prompt, obj_ids, is_eval=True, **kwargs):
         object_embed, object_img_embed = self.encode_object_feat(scene_feat, scene_img_feat, scene_locs)
         device = object_embed.device
         batch_size, obj_num = object_embed.shape[:2]
@@ -535,7 +542,8 @@ class Chat3D(nn.Module):
                 proj_object_embed[i], 
                 proj_object_img_embed[i] if self.add_img_token else None, 
                 proj_scene_embed[i] if self.add_scene_token else None, 
-                scene_mask[i]
+                scene_mask[i],
+                obj_ids[i]
             )
             object_list_embed = object_list_embed.unsqueeze(0)
             # object_list_embed = nclamp(object_list_embed, min=-0.05, max=0.05)

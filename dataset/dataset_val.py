@@ -8,7 +8,7 @@ import torch
 from dataset.base_dataset import PTBaseDataset, process_batch_data, replace_old_id
 import glob
 import random
-from prompts.prompts import obj_caption_prompt
+from prompts.prompts import obj_caption_wid_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -33,10 +33,13 @@ class ValPTDataset(PTBaseDataset):
         return len(self.anno)
 
     def __getitem__(self, index):
-        scene_id, obj_id, scene_feat, scene_img_feat, scene_mask, scene_locs = self.get_anno(index)
-        # prompt = self.system + self.prompt_template.format(self.anno[index]["prompt"])
+        scene_id, scene_feat, scene_img_feat, scene_mask, scene_locs = self.get_anno(index)
+        if "obj_id" in self.anno[index]:
+            obj_id = int(self.anno[index]["obj_id"])
+        else:
+            obj_id = 0
         if 'prompt' not in self.anno[index]:
-            prompt = random.choice(obj_caption_prompt)
+            prompt = random.choice(obj_caption_wid_prompt).replace('<id>', f"<OBJ{obj_id:03}>")
         else:
             prompt = self.anno[index]["prompt"]
         ref_captions = self.anno[index]["ref_captions"].copy() if "ref_captions" in self.anno[index] else []
@@ -91,7 +94,7 @@ def valuate_collate_fn(batch):
         "scene_img_feat": batch_scene_img_feat,
         "scene_locs": batch_scene_locs,
         "scene_mask": batch_scene_mask,
-        "obj_id": obj_ids,
+        "obj_ids": obj_ids,
         "custom_prompt": prompts,
         "ref_captions": ref_captions,
         "scene_id": scene_ids,

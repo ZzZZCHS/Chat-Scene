@@ -71,10 +71,6 @@ class PTBaseDataset(Dataset):
 
     def get_anno(self, index, stage=2):
         scene_id = self.anno[index]["scene_id"]
-        if "obj_id" in self.anno[index]:
-            obj_id = int(self.anno[index]["obj_id"])
-        else:
-            obj_id = 0
         if self.attributes is not None:
             scene_attr = self.attributes[scene_id]
             # obj_num = scene_attr["locs"].shape[0]
@@ -86,7 +82,7 @@ class PTBaseDataset(Dataset):
             scene_feat = scene_feat.unsqueeze(0)
         scene_img_feat = self.scene_img_feats[scene_id] if self.scene_img_feats is not None else torch.zeros((scene_feat.shape[0], self.img_feat_dim))
         scene_mask = self.scene_masks[scene_id] if self.scene_masks is not None else torch.ones(scene_feat.shape[0], dtype=torch.int)
-        return scene_id, obj_id, scene_feat, scene_img_feat, scene_mask, scene_locs
+        return scene_id, scene_feat, scene_img_feat, scene_mask, scene_locs
 
 
 def process_batch_data(scene_feats, scene_img_feats, scene_masks, scene_locs):
@@ -110,6 +106,17 @@ def process_batch_data(scene_feats, scene_img_feats, scene_masks, scene_locs):
     #     batch_scene_colors[i][:scene_colors[i].shape[0]] = scene_colors[i]
     #     batch_scene_mask[i][:scene_feats[i].shape[0]] = 1
     return batch_scene_feat, batch_scene_img_feat, batch_scene_locs, batch_scene_mask
+
+
+def extract_all_ids(s):
+    id_list = []
+    for tmp in s.split('OBJ')[1:]:
+        j = 0
+        while tmp[:j+1].isdigit() and j < len(tmp):
+            j = j + 1
+        if j > 0:
+            id_list.append(j)
+    return id_list
 
 
 def replace_old_id(s, prefix_sum):

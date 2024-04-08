@@ -61,7 +61,6 @@ def is_port_in_use(port):
 
 
 def init_distributed_mode(args):
-    breakpoint()
     if 'RANK' in os.environ and 'WORLD_SIZE' in os.environ:
         # job started by torch.distributed.launch
         args.rank = int(os.environ["RANK"])

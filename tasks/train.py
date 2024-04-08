@@ -26,6 +26,7 @@ from pycocoevalcap.bleu.bleu import Bleu
 from pycocoevalcap.meteor.meteor import Meteor
 from pycocoevalcap.rouge.rouge import Rouge
 from pycocoevalcap.cider.cider import Cider
+from pycocoevalcap.tokenizer.ptbtokenizer import PTBTokenizer
 
 
 import numpy as np
@@ -37,9 +38,10 @@ import os
 logger = logging.getLogger(__name__)
 max_bleus = [0.] * 4
 
+tokenizer = PTBTokenizer()
 scorers = [
     (Bleu(4), ["Bleu_1", "Bleu_2", "Bleu_3", "Bleu_4"]),
-    # (Meteor(), "METEOR"),
+    (Meteor(), "METEOR"),
     (Rouge(), "ROUGE_L"),
     (Cider(), "CIDEr"),
     # (Spice(), "SPICE")
@@ -129,7 +131,7 @@ def train(
         global_step += 1
 
         if do_eval and ((i+1) % eval_freq == 0 or i == len(train_loader) - 1):
-            val_metrics = evaluate(model, val_loaders, epoch, global_step, device, config)
+            val_metrics = evaluate_all(model, val_loaders, epoch, global_step, device, config)
             if is_main_process():
                 for k, v in val_metrics.items():
                     if k not in eval_metric_logger.meters:
@@ -190,6 +192,7 @@ def evaluate_all(
     
     model.train()
     model.module.llama_model.config.use_cache = False
+    return val_scores
 
 
 def evaluate(
@@ -213,9 +216,8 @@ def evaluate(
     logger.info(f"batch-size={val_loader.batch_size} length(#batches)={len(val_loader)}")
     for i, batch in tqdm(enumerate(val_loader)):
         for k in batch.keys():
-            if k in ["scene_feat", "scene_locs", "scene_colors", "scene_mask"]:
+            if type(k) == torch.tensor:
                 batch[k] = batch[k].to(device)
-
         with torch.no_grad():
             pred = model(**batch, is_eval=True)
         if "target_captions" in batch:
@@ -235,7 +237,7 @@ def evaluate(
             batch_size = len(pred)
             for bi in range(batch_size):
                 scene_id = batch["scene_id"][bi]
-                obj_id = int(batch["obj_id"][bi])
+                obj_id = int(batch["obj_ids"][bi])
                 qid = batch["qid"][bi]
                 prompt = batch["custom_prompt"][bi]
                 tmp_pred = pred[bi]
@@ -284,9 +286,11 @@ def evaluate(
                     pred = pred[0].lower() + pred[1:]
                 if pred in output["ref_captions"]:
                     acc += 1
-                tmp_preds[item_id] = [pred]
+                tmp_preds[item_id] = [{'caption': pred}]
                 ref_captions = [p.replace("\n", " ").strip() for p in output["ref_captions"]]
-                tmp_targets[item_id] = ref_captions
+                tmp_targets[item_id] = [{'caption': caption} for caption in ref_captions]
+            tmp_preds = tokenizer.tokenize(tmp_preds)
+            tmp_targets = tokenizer.tokenize(tmp_targets)
             acc = acc / len(save_preds)
             val_scores[f"[{eval_name}] EM1"] = acc
             for scorer, method in scorers:
@@ -305,14 +309,16 @@ def evaluate(
             tmp_targets = {}
             acc = 0
             print("Total samples:", len(save_preds))
-            for output in save_preds:
-                item_id = f"{output['scene_id']}_{output['obj_id']}_{output['qid']}"
+            for i, output in enumerate(save_preds):
+                item_id = f"{output['scene_id']}_{output['obj_id']}_{output['qid']}_{i}"
                 pred = output["pred"]
                 if pred in output["ref_captions"]:
                     acc += 1
-                tmp_preds[item_id] = [pred]
+                tmp_preds[item_id] = [{'caption': pred}]
                 ref_captions = [p.replace("\n", " ").strip() for p in output["ref_captions"]]
-                tmp_targets[item_id] = ref_captions
+                tmp_targets[item_id] = [{'caption': caption} for caption in ref_captions]
+            tmp_preds = tokenizer.tokenize(tmp_preds)
+            tmp_targets = tokenizer.tokenize(tmp_targets)
             acc = acc / len(save_preds)
             val_scores[f"[{eval_name}] Acc"] = acc
             for scorer, method in scorers:
@@ -346,7 +352,7 @@ def setup_dataloaders(config):
     train_loaders = create_loader(
         train_datasets,
         train_samplers,
-        batch_size=[config.batch_size * len(train_datasets)],
+        batch_size=[config.batch_size] * len(val_datasets),
         num_workers=[config.num_workers] * len(train_datasets),
         is_trains=[True] * len(train_datasets),
         collate_fns=[s2_collate_fn] * len(train_datasets),
@@ -354,7 +360,7 @@ def setup_dataloaders(config):
     val_loaders = create_loader(
         val_datasets,
         val_samplers,
-        batch_size=[config.batch_size * len(val_datasets)],
+        batch_size=[config.batch_size] * len(val_datasets),
         num_workers=[config.num_workers] * len(val_datasets),
         is_trains=[False] * len(val_datasets),
         collate_fns=[valuate_collate_fn] * len(val_datasets),
@@ -437,7 +443,7 @@ def main(config):
                     if config.get("save_latest", False):
                         torch.save(save_obj, join(config.output_dir, "ckpt_latest.pth"))
                     else:
-                        torch.save(save_obj, join(config.output_dir, f"ckpt_{epoch:02d}.pth"))
+                        torch.save(save_obj, join(config.output_dir, f"ckpt_{epoch:02d}_{global_step}.pth"))
 
             if global_step > max_global_step:
                 break

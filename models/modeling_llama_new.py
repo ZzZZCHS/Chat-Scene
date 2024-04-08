@@ -791,7 +791,6 @@ class LlamaDecoderLayer(nn.Module):
             )
 
         residual = hidden_states
-        breakpoint()
         hidden_states = self.input_layernorm(hidden_states)
 
         # Self Attention

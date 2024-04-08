@@ -2,8 +2,8 @@ which_python=$(which python)
 export PYTHONPATH=${PYTHONPATH}:${which_python}:.
 echo "PYTHONPATH: ${PYTHONPATH}"
 
-# export MASTER_PORT=53179 # 53173 53179 53181 53183 53187
-# export MASTER_ADDR=localhost
+export MASTER_PORT=53173 # 53173 53179 53181 53183 53187
+export MASTER_ADDR=localhost
 # echo "MASTER_ADDR="$MASTER_ADDR
 # export OMP_NUM_THREADS=1
 
@@ -16,22 +16,21 @@ dp=0.1
 scene_dim=256
 encoder_num_layers=3
 train_emb=True
-train_img_proj=True
+train_img_proj=False
 no_obj=False
 add_img_token=True
-add_scene_token=False
-# img_projector_path="annotations/img_projector_llava1-5.pt"
-img_projector_path=""
+add_scene_token=True
+img_projector_path="annotations/img_projector_llava15.pt"
 train_tag="objaverse#scannet_caption#scanrefer_caption#scannet_region_caption#nr3d_caption#scanrefer#obj_align#scanqa"
-# train_tag="objaverse"
-val_tag="scanqa#scanrefer#scanrefer_caption#objaverse"
+# train_tag="scannet_caption"
+val_tag="scanqa#scanrefer#scanrefer_caption"
 tag="${train_tag}__${val_tag}"
 evaluate=False
 
 debug=false
 if [ $debug = "true" ]; then
     enable_wandb=False
-    gpu_num=1
+    gpu_num=2
     do_save=False
 else
     enable_wandb=True # !!!
@@ -39,6 +38,7 @@ else
     do_save=True
 fi
 
+pretrained_path="/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/20240408_024901_dp0.1_lr5e-6_sta2_ep1_objaverse#scannet_caption#scanrefer_caption#scannet_region_caption#nr3d_caption#scanrefer#obj_align#scanqa__scanqa#scanrefer#scanrefer_caption#objaverse/ckpt_00.pth"
 # pretrained_path="/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/20240407_120136_dp0.1_lr5e-6_sta2_ep1_objaverse-scannet_caption-scanrefer_caption-scannet_region_caption-nr3d_caption-scanrefer-obj_align-scanqa__scanrefer_caption/ckpt_00_4000.pth"
 # pretrained_path="/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/20240404_021034_dp0.1_lr5e-6_sta2_ep5_objalign+objcaption+grounding+caption+regioncaption+qa_scanqa/ckpt_04.pth"
 
@@ -64,9 +64,8 @@ fi
 OUTPUT_DIR=outputs/"$(date +"%Y%m%d_%H%M%S")"_dp"$dp"_lr"$lr"_sta"$stage"_ep"$epoch"_"$tag"
 mkdir -p ${OUTPUT_DIR}
 
-srun --partition=mozi-S1 --gres=gpu:${gpu_num} --ntasks-per-node 1 --kill-on-bad-exit \
+srun --partition=mozi-S1 --gres=gpu:${gpu_num} --ntasks-per-node=${gpu_num} --kill-on-bad-exit \
 python tasks/train.py \
-    --nproc_per_node=${gpu_num} \
     $(dirname $0)/config.py \
     output_dir "$OUTPUT_DIR" \
     model.stage "$stage" \

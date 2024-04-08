@@ -8,7 +8,7 @@ import torch
 from dataset.base_dataset import PTBaseDataset, process_batch_data, replace_old_id, extract_all_ids
 import glob
 import random
-from prompts.prompts import obj_caption_wid_prompt
+from prompts.prompts import obj_caption_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -39,49 +39,15 @@ class S2PTDataset(PTBaseDataset):
         if "obj_id" in self.anno[index]:
             obj_id = int(self.anno[index]["obj_id"])
         else:
-            obj_id = random.randint(0, 199)
+            obj_id = 0
         if 'prompt' not in self.anno[index]:
-            question = random.choice(obj_caption_wid_prompt).replace('<id>', f"<OBJ{obj_id:03}>")
+            question = random.choice(obj_caption_prompt)
         else:
             question = self.anno[index]["prompt"]
         caption = self.anno[index]["caption"]
+        obj_list = extract_all_ids(question) + extract_all_ids(caption)
+        
         scene_id, scene_feat, scene_img_feat, scene_mask, scene_locs = self.get_anno(index)
-        # related_ids = self.anno[index]["related_ids"] if "related_ids" in self.anno[index] else None
-        # obj_num = scene_locs.shape[0]
-        # if obj_num > 20:
-        #     pos = scene_locs[:, :3]
-        #     dist = torch.sqrt(torch.sum((pos.unsqueeze(1) - pos.unsqueeze(0)) ** 2, -1) + 1e-10)
-        #     valid_mask = torch.zeros(obj_num, dtype=torch.bool)
-        #     for i in range(obj_num):
-        #         if f"obj{i:02}" in caption or f"obj{i:02}" in question or \
-        #                 f"Obj{i:02}" in caption or f"Obj{i:02}" in question:
-        #             valid_mask[i] = 1
-        #     if valid_mask.sum() > 0:
-        #         min_dist = dist[valid_mask].min(dim=0)[0]
-        #         # foreground_mask = torch.ones(obj_num, dtype=torch.bool)
-        #         # object_labels = self.attributes[scene_id]["objects"]
-        #         # for i in range(obj_num):
-        #         #     if object_labels[i] in ["wall", "floor", "ceiling"]:
-        #         #         foreground_mask[i] = 0
-        #         norm_dist = min_dist / (min_dist.max() + 1.)
-        #         valid_mask[norm_dist.topk(k=20, largest=False)[1]] = 1
-        #         # valid_mask = ((norm_dist < norm_dist.median()) & foreground_mask) | valid_mask
-        #         dist_prob = norm_dist.masked_fill(valid_mask, 0.)
-        #         final_mask = 1 - torch.bernoulli(dist_prob)
-        #         prefix_sum = final_mask.cumsum(dim=0)
-        #         caption = replace_old_id(caption, prefix_sum)
-        #         question = replace_old_id(question, prefix_sum)
-        #         obj_id = int(prefix_sum[obj_id]) - 1
-        #         scene_feat = scene_feat[final_mask.bool()]
-        #         scene_locs = scene_locs[final_mask.bool()]
-        #         scene_colors = scene_colors[final_mask.bool()]
-        #         if related_ids is not None:
-        #             related_ids = [int(prefix_sum[x])-1 for x in related_ids]
-        # detach_mask = torch.ones(scene_feat.shape[0], dtype=torch.bool)
-        # if related_ids is not None:
-        #     for rid in related_ids:
-        #         if rid < scene_feat.shape[0]:
-        #             detach_mask[rid] = 0
         return scene_feat, scene_img_feat, scene_mask, scene_locs, obj_id, caption, question
 
 

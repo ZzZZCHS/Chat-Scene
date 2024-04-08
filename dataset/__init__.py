@@ -32,8 +32,8 @@ def create_dataset(config):
     #     raise NotImplementedError
 
     # logger.info(f"train_file: {config_train_file}")
-    train_dataset_cls = S2PTDataset
-    val_dataset_cls = ValPTDataset
+    # train_dataset_cls = S2PTDataset
+    # val_dataset_cls = ValPTDataset
 
     train_files = []
     for train_name in config.train_tag.split('#'):
