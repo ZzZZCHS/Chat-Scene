@@ -24,21 +24,24 @@ img_projector_path="annotations/img_projector_llava15.pt"
 train_tag="objaverse#scannet_caption#scanrefer_caption#scannet_region_caption#nr3d_caption#scanrefer#obj_align#scanqa"
 # train_tag="scannet_caption"
 val_tag="scanqa#scanrefer#scanrefer_caption"
-tag="${train_tag}__${val_tag}"
-evaluate=False
 
+evaluate=False
 debug=false
 if [ $debug = "true" ]; then
     enable_wandb=False
     gpu_num=2
     do_save=False
+    other_info="debug"
 else
     enable_wandb=True # !!!
     gpu_num=4
     do_save=True
+    other_info="imgpretrain"
 fi
 
-pretrained_path="/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/20240408_024901_dp0.1_lr5e-6_sta2_ep1_objaverse#scannet_caption#scanrefer_caption#scannet_region_caption#nr3d_caption#scanrefer#obj_align#scanqa__scanqa#scanrefer#scanrefer_caption#objaverse/ckpt_00.pth"
+tag="${train_tag}__${val_tag}__${other_info}"
+
+# pretrained_path="/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/20240408_024901_dp0.1_lr5e-6_sta2_ep1_objaverse#scannet_caption#scanrefer_caption#scannet_region_caption#nr3d_caption#scanrefer#obj_align#scanqa__scanqa#scanrefer#scanrefer_caption#objaverse/ckpt_00.pth"
 # pretrained_path="/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/20240407_120136_dp0.1_lr5e-6_sta2_ep1_objaverse-scannet_caption-scanrefer_caption-scannet_region_caption-nr3d_caption-scanrefer-obj_align-scanqa__scanrefer_caption/ckpt_00_4000.pth"
 # pretrained_path="/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/20240404_021034_dp0.1_lr5e-6_sta2_ep5_objalign+objcaption+grounding+caption+regioncaption+qa_scanqa/ckpt_04.pth"
 
