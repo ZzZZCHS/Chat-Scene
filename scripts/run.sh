@@ -2,7 +2,7 @@ which_python=$(which python)
 export PYTHONPATH=${PYTHONPATH}:${which_python}:.
 echo "PYTHONPATH: ${PYTHONPATH}"
 
-export MASTER_PORT=53173 # 53173 53179 53181 53183 53187
+export MASTER_PORT=53181 # 53173 53179 53181 53183 53187
 export MASTER_ADDR=localhost
 # echo "MASTER_ADDR="$MASTER_ADDR
 # export OMP_NUM_THREADS=1
@@ -18,20 +18,20 @@ encoder_num_layers=3
 train_emb=True
 train_img_proj=False
 no_obj=False
-add_img_token=True
-add_scene_token=True
+add_img_token=False
+add_scene_token=False
 img_projector_path="annotations/img_projector_llava15.pt"
 train_tag="objaverse#scannet_caption#scanrefer_caption#scannet_region_caption#nr3d_caption#scanrefer#obj_align#scanqa"
 # train_tag="scannet_caption"
 val_tag="scanqa#scanrefer#scanrefer_caption"
 
-evaluate=False
-debug=false
+evaluate=True
+debug=true
 if [ $debug = "true" ]; then
     enable_wandb=False
     gpu_num=2
     do_save=False
-    other_info="debug"
+    other_info="debug_wosceneimg"
 else
     enable_wandb=True # !!!
     gpu_num=4
@@ -41,6 +41,7 @@ fi
 
 tag="${train_tag}__${val_tag}__${other_info}"
 
+pretrained_path="/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/20240408_025856_dp0.1_lr5e-6_sta2_ep1_objaverse#scannet_caption#scanrefer_caption#scannet_region_caption#nr3d_caption#scanrefer#obj_align#scanqa__scanqa#scanrefer#scanrefer_caption#objaverse_wosceneimg/ckpt_00.pth"
 # pretrained_path="/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/20240408_024901_dp0.1_lr5e-6_sta2_ep1_objaverse#scannet_caption#scanrefer_caption#scannet_region_caption#nr3d_caption#scanrefer#obj_align#scanqa__scanqa#scanrefer#scanrefer_caption#objaverse/ckpt_00.pth"
 # pretrained_path="/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/20240407_120136_dp0.1_lr5e-6_sta2_ep1_objaverse-scannet_caption-scanrefer_caption-scannet_region_caption-nr3d_caption-scanrefer-obj_align-scanqa__scanrefer_caption/ckpt_00_4000.pth"
 # pretrained_path="/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/20240404_021034_dp0.1_lr5e-6_sta2_ep5_objalign+objcaption+grounding+caption+regioncaption+qa_scanqa/ckpt_04.pth"
