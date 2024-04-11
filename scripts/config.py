@@ -258,10 +258,17 @@ train_file_dict = {
         f"{anno_root}/scanqa_train.json"
     ],
     'objaverse': [
-        f"{anno_root}/objaverse_uni3d_feature.pt",
+        f"{anno_root}/objaverse_uni3d_feature_train.pt",
         None,
         None,
-        f"{anno_root}/objaverse_caption_train.json"
+        f"{anno_root}/objaverse_caption_train.json",
+        1
+    ],
+    'sqa3d': [
+        feat_file,
+        img_feat_file,
+        f"{anno_root}/scannet_train_attributes.pt",
+        f"{anno_root}/sqa3d_train.json"
     ]
 }
 
@@ -282,7 +289,7 @@ val_file_dict = {
         f"{anno_root}/scannet_{segmentor}_{pc_encoder}_feats.pt",
         seg_img_feat_file,
         f"{anno_root}/scannet_{segmentor}_val_attributes.pt",
-        f"{anno_root}/scanrefer_{segmentor}_val_stage2_caption_iou0.json"
+        f"{anno_root}/scanrefer_{segmentor}_val_stage2_caption_OBJ.json"
     ],
     'scanrefer_caption': [
         feat_file,
@@ -291,10 +298,22 @@ val_file_dict = {
         f"{anno_root}/scanrefer_val_stage2_caption_OBJ.json"
     ],
     'objaverse': [
-        f"{anno_root}/objaverse_uni3d_feature.pt",
+        f"{anno_root}/objaverse_uni3d_feature_val.pt",
         None,
         None,
         f"{anno_root}/objaverse_caption_val.json"
+    ],
+    'obj_align': [
+        feat_file,
+        img_feat_file,
+        f"{anno_root}/scannet_val_attributes.pt",
+        f"{anno_root}/obj_align_val.json"
+    ],
+    'sqa3d': [
+        f"{anno_root}/scannet_{segmentor}_{pc_encoder}_feats.pt",
+        seg_img_feat_file,
+        f"{anno_root}/scannet_{segmentor}_val_attributes.pt",
+        f"{anno_root}/sqa3d_val.json"
     ]
 }
 
@@ -337,7 +356,15 @@ model = dict(
 )
 
 lora = dict(
-    lora_target_modules=["q_proj", "v_proj"],
+    lora_target_modules=[
+      "q_proj",
+      "v_proj",
+      "k_proj",
+      "o_proj",
+      "gate_proj",
+      "up_proj",
+      "down_proj"
+    ],
     lora_r=64,
     lora_alpha=16,
     lora_dropout=0.05
@@ -348,22 +375,22 @@ optimizer = dict(
     lr=5e-3,
     opt_betas=[0.9, 0.999],  # default
     weight_decay=0.02,
-    max_grad_norm=10,  # requires a positive float, use -1 to disable
+    max_grad_norm=-1,  # requires a positive float, use -1 to disable
     # use a different lr for some modules, e.g., larger lr for new modules
     different_lr=dict(
         enable=False,
-        module_names=["module.object_proj", "module.object_img_proj"],
-        lr=[2e-6, 2e-6],
-        wd=[0.02, 0.02]
+        module_names=["module.object_img_proj"],
+        lr=[5e-7],
+        wd=[0.02]
     ),
 )
 
-scheduler = dict(sched="cosine", epochs=3, min_lr_multi=0.01, warmup_epochs=0.2)
+scheduler = dict(sched="cosine", epochs=3, min_lr_multi=0.01, warmup_epochs=0.1)
 
 evaluate = False
 deep_fusion = False
 
-fp16 = True
+fp16 = False
 gradient_checkpointing = True
 
 # ========================= wandb ==========================

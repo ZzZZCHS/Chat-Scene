@@ -34,24 +34,27 @@ def create_dataset(config):
     # logger.info(f"train_file: {config_train_file}")
     # train_dataset_cls = S2PTDataset
     # val_dataset_cls = ValPTDataset
+    if config.evaluate:
+        train_datasets = []
+    else:
+        train_files = []
+        for train_name in config.train_tag.split('#'):
+            if train_name not in config.train_file_dict:
+                raise NotImplementedError
+            train_files.append(config.train_file_dict[train_name])
+        
+        train_datasets = []
+        datasets = []
+        for train_file in train_files:
+            datasets.append(S2PTDataset(ann_list=train_file))
+        dataset = ConcatDataset(datasets)
+        train_datasets.append(dataset)
 
-    train_files = []
-    for train_name in config.train_tag.split('#'):
-        if train_name not in config.train_file_dict:
-            raise NotImplementedError
-        train_files.append(config.train_file_dict[train_name])
     val_files = {}
     for val_name in config.val_tag.split('#'):
         if val_name not in config.val_file_dict:
             raise NotImplementedError
         val_files[val_name] = config.val_file_dict[val_name]
-
-    train_datasets = []
-    datasets = []
-    for train_file in train_files:
-        datasets.append(S2PTDataset(ann_list=train_file))
-    dataset = ConcatDataset(datasets)
-    train_datasets.append(dataset)
 
     val_datasets = []
     for k, v in val_files.items():

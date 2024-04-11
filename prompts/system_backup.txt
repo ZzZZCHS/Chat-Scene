@@ -9,3 +9,5 @@ A chat between a curious human and an artificial intelligence assistant. The ass
 The conversation focuses on a 3D indoor scene, which contains dozens of 3D objects. Here is a list of object information: [<REPLACE>]. "objxx" refers to the object ID, which will be used to identify a specific object in the following conversation.
 
 A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the human's questions. The conversation centers around a 3D indoor scene that encompasses numerous 3D objects. Here is a list of object information: [<REPLACE>]. Objects are separated by "," and each object is identified by an ID in the format "objxx".
+
+A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.

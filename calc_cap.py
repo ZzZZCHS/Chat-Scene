@@ -2,35 +2,11 @@ import json
 import sys
 
 outputs = json.load(open("/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/20240307_045334_dp0.1_lr5e-4_sta2_ep3_bs3*1_caption50/preds_epoch2_step6456.json", "r"))
-# outputs = json.load(open("outputs/2023-11-24-192539_dp0.1_lr2e-4_sta2_ep3_objscale200_scenescale50_bs1_cosine_objalign_scenealign_scanqa/preds_epoch2_step33928.json", "r"))
-
-annos = json.load(open("annotations/scanrefer_mask3d_val_stage2_caption_iou0.json"))
-# outputs2 = json.load(open("/root/scene-LLaMA/video_chat/video_chat/outputs/2023-09-17-215602_dp0.1_lr5e-5_sta3_ep3/preds_epoch-1_step0.json", "r"))
-# outputs.extend(outputs2)
 preds = {}
 targets = {}
 
 print(len(outputs))
 ref_lens = 0
-# acc = 0
-# max_len = 40
-
-for anno in annos:
-    item_id = f"{anno['scene_id']}_{anno['obj_id']}"
-    targets[item_id] = [{"caption": "sos " + caption + " eos"} for caption in anno["ref_captions"]]
-
-
-for i, output in enumerate(outputs):
-    item_id = f"{output['scene_id']}_{output['obj_id']}"
-    pred = output["pred"]
-    if ": " in pred:
-        pred = pred.split(": ")[1].strip()
-    preds[item_id] = [{"caption": "sos " + pred + " eos"}]
-
-for k in targets.keys():
-    if k not in preds:
-        preds[k] = [{"caption": "sos eos"}]
-# breakpoint()
 
 
 pred_keys = set(preds.keys())

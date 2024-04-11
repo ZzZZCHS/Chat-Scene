@@ -4,6 +4,7 @@ import sys
 import torch
 import random
 from tqdm import tqdm
+from collections import defaultdict
 
 def get_box3d_min_max(corner):
     ''' Compute min and max coordinates for 3D bounding box
@@ -68,69 +69,127 @@ def construct_bbox_corners(center, box_size):
 
 # outputs = json.load(open("outputs/2023-11-15-231032_dp0.1_lr2e-4_sta2_ep3_objscale200_scenescale50_bs1_cosine_objalign_scenealign_mean/preds_epoch-1_step0.json", "r"))
 
-split = "train"
-segmentor = "mask3d"
-annos = json.load(open(f"annotations/scanrefer_{split}_stage2_grounding_OBJ.json", "r"))
+# split = "train"
+# segmentor = "mask3d"
+# annos = json.load(open(f"annotations/scanrefer_{split}_stage2_grounding_OBJ.json", "r"))
+# new_annos = []
+
+# instance_attribute_file = f"annotations/scannet_{segmentor}_{split}_attributes.pt"
+# scannet_attribute_file = f"annotations/scannet_{split}_attributes.pt"
+
+# instance_attrs = torch.load(instance_attribute_file)
+# scannet_attrs = torch.load(scannet_attribute_file)
+
+
+# for i, anno in tqdm(enumerate(annos)):
+#     scene_id = anno["scene_id"]
+#     obj_id = anno["obj_id"]
+#     if scene_id not in instance_attrs:
+#         continue
+#     instance_locs = instance_attrs[scene_id]["locs"]
+#     scannet_locs = scannet_attrs[scene_id]["locs"]
+#     instance_num = instance_locs.shape[0]
+#     max_iou, max_id = -1, -1
+#     for pred_id in range(instance_num):
+#         pred_locs = instance_locs[pred_id].tolist()
+#         gt_locs = scannet_locs[obj_id].tolist()
+#         pred_corners = construct_bbox_corners(pred_locs[:3], pred_locs[3:])
+#         gt_corners = construct_bbox_corners(gt_locs[:3], gt_locs[3:])
+#         iou = box3d_iou(pred_corners, gt_corners)
+#         if iou > max_iou:
+#             max_iou = iou
+#             max_id = pred_id
+#     if split == "train":
+#         if max_iou > 0.75:
+#             new_annos.append({
+#                 "scene_id": scene_id,
+#                 "obj_id": max_id,
+#                 "caption": f"<OBJ{max_id:03}>.",
+#                 "prompt": anno["prompt"]
+#             })
+#     else:
+#         new_annos.append({
+#             "scene_id": scene_id,
+#             "obj_id": obj_id,
+#             "ref_captions": [f"<OBJ{max_id:03}>."],
+#             "prompt": anno["prompt"]
+#         })
+
+# print(len(new_annos))
+
+# with open(f"annotations/scanrefer_{segmentor}_{split}_stage2_grounding_OBJ.json", "w") as f:
+#     json.dump(new_annos, f, indent=4)
+
+
+split = "val"
+encoder = "mask3d"
+thr = 0.
+annos = json.load(open(f"annotations/scanrefer_{split}_stage2_objxx.json", "r"))
 new_annos = []
 
-instance_attribute_file = f"annotations/scannet_{segmentor}_{split}_attributes.pt"
+print(len(annos))
+corpus = {}
+for anno in annos:
+    gt_key = f"{anno['scene_id']}|{anno['obj_id']}"
+    # corpus[gt_key] = [f"sos {caption} eos".replace('\n', ' ') for caption in anno['ref_captions']]
+    corpus[gt_key] = anno['ref_captions']
+
+# myKeys = list(corpus.keys())
+# myKeys.sort()
+# corpus = {i: corpus[i] for i in myKeys}
+# with open('annotations/scan2cap_val_corpus.json', 'w') as f:
+#     json.dump(corpus, f, indent=4)
+# exit()
+
+instance_attribute_file = f"annotations/scannet_{encoder}_{split}_attributes.pt"
 scannet_attribute_file = f"annotations/scannet_{split}_attributes.pt"
 
 instance_attrs = torch.load(instance_attribute_file)
 scannet_attrs = torch.load(scannet_attribute_file)
 
+prompt_templates = []
+with open('prompts/scanrefer_caption_templates.txt') as f:
+    prompt_templates = [p.strip() for p in f.readlines()]
 
-for i, anno in tqdm(enumerate(annos)):
-    scene_id = anno["scene_id"]
-    obj_id = anno["obj_id"]
-    if scene_id not in instance_attrs:
-        continue
+covered_ids = defaultdict(set)
+covered_num = 0
+for scene_id in tqdm(instance_attrs.keys()):
     instance_locs = instance_attrs[scene_id]["locs"]
     scannet_locs = scannet_attrs[scene_id]["locs"]
-    instance_num = instance_locs.shape[0]
-    max_iou, max_id = -1, -1
-    for pred_id in range(instance_num):
+    gt_match_id = [-1] * len(scannet_locs)
+    gt_match_iou = [-1] * len(scannet_locs)
+    for pred_id in range(len(instance_locs)):
         pred_locs = instance_locs[pred_id].tolist()
-        gt_locs = scannet_locs[obj_id].tolist()
         pred_corners = construct_bbox_corners(pred_locs[:3], pred_locs[3:])
-        gt_corners = construct_bbox_corners(gt_locs[:3], gt_locs[3:])
-        iou = box3d_iou(pred_corners, gt_corners)
-        if iou > max_iou:
-            max_iou = iou
-            max_id = pred_id
-    if split == "train":
-        if max_iou > 0.75:
-            new_annos.append({
-                "scene_id": scene_id,
-                "obj_id": max_id,
-                "caption": f"<OBJ{max_id:03}>.",
-                "prompt": anno["prompt"]
-            })
-    else:
+        max_id = max_iou = -1
+        for gt_id in range(len(scannet_locs)):
+            # if f"{scene_id}|{gt_id}" not in corpus:
+            #     continue
+            gt_locs = scannet_locs[gt_id].tolist()
+            gt_corners = construct_bbox_corners(gt_locs[:3], gt_locs[3:])
+            iou = box3d_iou(pred_corners, gt_corners)
+            if iou > max_iou:
+                max_iou = iou
+                max_id = gt_id
+        if f"{scene_id}|{max_id}" not in corpus:
+            continue
+        if f"{scene_id}|{max_id}" in corpus:
+            covered_ids[scene_id].add(max_id)
+        if max_iou > gt_match_iou[max_id]:
+            gt_match_iou[max_id] = max_iou
+            gt_match_id[max_id] = pred_id
+    for gt_id, pred_id in enumerate(gt_match_id):
+        if pred_id == -1:
+            continue
         new_annos.append({
-            "scene_id": scene_id,
-            "obj_id": obj_id,
-            "ref_captions": [f"<OBJ{max_id:03}>."],
-            "prompt": anno["prompt"]
+            'scene_id': scene_id,
+            'obj_id': gt_id,
+            'pred_id': pred_id,
+            'prompt': random.choice(prompt_templates).replace(f"<id>", f"<OBJ{pred_id:03}>"),
+            "ref_captions": corpus[f"{scene_id}|{gt_id}"],
+            "iou": gt_match_iou[gt_id]
         })
-
-print(len(new_annos))
-
-with open(f"annotations/scanrefer_{segmentor}_{split}_stage2_grounding_OBJ.json", "w") as f:
-    json.dump(new_annos, f, indent=4)
-
-
-# split = "val"
-# encoder = "mask3d"
-# thr = 0.25
-# annos = json.load(open(f"annotations/scanrefer_{split}_stage2_objxx.json", "r"))
-# new_annos = []
-
-# instance_attribute_file = f"annotations/scannet_{encoder}_{split}_attributes.pt"
-# scannet_attribute_file = f"annotations/scannet_{split}_attributes.pt"
-
-# instance_attrs = torch.load(instance_attribute_file)
-# scannet_attrs = torch.load(scannet_attribute_file)
+    covered_num += len(covered_ids[scene_id])
 
 # filtered_annos = {}
 
@@ -159,7 +218,7 @@ with open(f"annotations/scanrefer_{segmentor}_{split}_stage2_grounding_OBJ.json"
 #             new_annos.append({
 #                 "scene_id": scene_id,
 #                 "obj_id": max_id,
-#                 "prompt": prompt.replace(f"obj{obj_id:02}", f"obj{max_id:02}"),
+#                 "prompt": prompt.replace(f"obj{obj_id:02}", f"<OBJ{max_id:03}>"),
 #                 "caption": anno["caption"],
 #                 "iou": max_iou
 #             })
@@ -168,14 +227,16 @@ with open(f"annotations/scanrefer_{segmentor}_{split}_stage2_grounding_OBJ.json"
 #                 filtered_annos[qid] = {
 #                     "scene_id": scene_id,
 #                     "obj_id": obj_id,
-#                     "prompt": prompt.replace(f"obj{obj_id:02}", f"obj{max_id:02}"),
+#                     "pred_id": max_id,
+#                     "prompt": prompt.replace(f"obj{obj_id:02}", f"<OBJ{max_id:03}>"),
 #                     "ref_captions": anno["ref_captions"],
 #                     "iou": max_iou
 #                 }
 
 # if len(new_annos) == 0:
 #     new_annos = list(filtered_annos.values())
-# print(len(new_annos))
+print(len(new_annos))
+print(covered_num)
 
-# with open(f"annotations/scanrefer_{encoder}_{split}_stage2_caption_iou{int(thr*100)}.json", "w") as f:
-#     json.dump(new_annos, f, indent=4)
+with open(f"annotations/scanrefer_{encoder}_{split}_stage2_caption_OBJ.json", "w") as f:
+    json.dump(new_annos, f, indent=4)

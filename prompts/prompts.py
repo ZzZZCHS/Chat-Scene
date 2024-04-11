@@ -24,7 +24,7 @@ obj_caption_prompt = [
 obj_caption_wid_prompt = [
     "Portray the visual characteristics of the <id>.",
     "Detail the outward presentation of the <id>.",
-    "Provide a depiction of the <id>'s appearance."
+    "Provide a depiction of the <id>'s appearance.",
     "Illustrate how the <id> looks.",
     "Describe the visual aspects of the <id>.",
     "Convey the physical attributes of the <id>.",

@@ -84,6 +84,7 @@ class Chat3D(nn.Module):
     """
     def __init__(self, config):
         super().__init__()
+        self.config = config
         llama_model_path = config.model.llama_model_path
         self.low_resource = config.model.low_resource
         self.max_txt_len = config.model.max_txt_len
@@ -139,10 +140,6 @@ class Chat3D(nn.Module):
             logger.info("freeze LLAMA")
             for name, param in self.llama_model.named_parameters():
                 param.requires_grad = False
-            self.llama_model.lm_head.weight.requires_grad = True
-            self.llama_model.lm_head.weight.data = self.llama_model.lm_head.weight.data.float()
-            self.llama_model.model.embed_tokens.weight.requires_grad = True
-            self.llama_model.model.embed_tokens.weight.data = self.llama_model.model.embed_tokens.weight.data.float()
 
             if config.model.use_lora:
                 def find_linear_layers(model, lora_target_modules):
@@ -178,6 +175,16 @@ class Chat3D(nn.Module):
                 )
                 self.llama_model = get_peft_model(self.llama_model, lora_config)
                 self.llama_model.print_trainable_parameters()
+                self.llama_model.model.lm_head.weight.requires_grad = True
+                self.llama_model.model.lm_head.weight.data = self.llama_model.model.lm_head.weight.data.float()
+                self.llama_model.model.model.embed_tokens.weight.requires_grad = True
+                self.llama_model.model.model.embed_tokens.weight.data = self.llama_model.model.model.embed_tokens.weight.data.float()
+                self.llama_model.print_trainable_parameters()
+            else:
+                self.llama_model.lm_head.weight.requires_grad = True
+                self.llama_model.lm_head.weight.data = self.llama_model.lm_head.weight.data.float()
+                self.llama_model.model.embed_tokens.weight.requires_grad = True
+                self.llama_model.model.embed_tokens.weight.data = self.llama_model.model.embed_tokens.weight.data.float()
             
             self.llama_model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant":False})
 
@@ -236,7 +243,7 @@ class Chat3D(nn.Module):
         # )
         # self.encoder_num_layers = config.model.encoder_num_layers
         # self.relation_module = CMT(hidden_size=self.llama_dim, num_layers=self.encoder_num_layers)
-        self.encoder_layer = nn.TransformerEncoderLayer(d_model=self.scene_dim, nhead=8, dim_feedforward=2048, norm_first=True, batch_first=True)
+        self.encoder_layer = nn.TransformerEncoderLayer(d_model=self.scene_dim, nhead=8, dim_feedforward=2048, dropout=0.05, norm_first=True, batch_first=True)
         self.relation_module = nn.TransformerEncoder(self.encoder_layer, num_layers=config.model.encoder_num_layers)
         self.scene_init_proj = nn.Sequential(
             nn.Linear(self.input_dim, self.scene_dim)
@@ -277,19 +284,25 @@ class Chat3D(nn.Module):
         self.last_embed = None
         
         # print_grad_status(self)
+    
+    def llama_embed_tokens(self, token_ids):
+        if self.config.model.use_lora:
+            return self.llama_model.model.model.embed_tokens(token_ids)
+        else:
+            return self.llama_model.model.embed_tokens(token_ids)
 
     def prepare_fixed_embed(self):
         prompt = self.system + " " + self.instruction + ' ' + self.role[0] + ": " 
         p_0, p_1 = prompt.split("<REPLACE>")
         p_0_token = self.llama_tokenizer(p_0, return_tensors="pt", add_special_tokens=True)
         p_1_token = self.llama_tokenizer(p_1, return_tensors="pt", add_special_tokens=False)
-        p_0_embed = self.llama_model.model.embed_tokens(p_0_token.input_ids).squeeze(0).detach()
-        p_1_embed = self.llama_model.model.embed_tokens(p_1_token.input_ids).squeeze(0).detach()
+        p_0_embed = self.llama_embed_tokens(p_0_token.input_ids).squeeze(0).detach()
+        p_1_embed = self.llama_embed_tokens(p_1_token.input_ids).squeeze(0).detach()
         return p_0_embed, p_1_embed
 
     def get_text_emb(self, text, device="cpu"):
         text_tokens = self.llama_tokenizer(text, return_tensors="pt", add_special_tokens=False).to(device)
-        embeds = self.llama_model.model.embed_tokens(text_tokens.input_ids)
+        embeds = self.llama_embed_tokens(text_tokens.input_ids)
         if self.train_emb:
             indices = text_tokens.input_ids >= self.ori_vocab_size
             indices = (indices * 1).unsqueeze(-1)
@@ -319,19 +332,27 @@ class Chat3D(nn.Module):
 
     def get_object_list_embed(self, embed_obj, embed_img, embed_scene, scene_mask, obj_id):
         valid_ids = torch.where(scene_mask == 1)[0].tolist()
+
+        # object_list_embed = []
+        # object_list_embed.append(embed_obj[obj_id])
+        # object_list_embed = torch.stack(object_list_embed, dim=0)
+        # return object_list_embed
+        if self.config.model.use_lora:
+            objid_embeds = self.llama_model.model.model.embed_tokens.weight[self.objid_start_idx:self.objid_end_idx] # 200 * 4096
+        else:
+            objid_embeds = self.llama_model.model.embed_tokens.weight[self.objid_start_idx:self.objid_end_idx]
         if len(valid_ids) == 1:
             object_list_embed = []
-            objid_embeds = self.llama_model.model.embed_tokens.weight[self.objid_start_idx:self.objid_end_idx]
             object_list_embed.append(objid_embeds[obj_id])
             if not self.no_obj:
                 object_list_embed.append(embed_obj[valid_ids[0]])
-            if embed_img is not None:
-                object_list_embed.append(embed_img[valid_ids[0]])
-            if embed_scene is not None:
-                object_list_embed.append(embed_scene[valid_ids[0]])
+            # if embed_scene is not None:
+            #     object_list_embed.append(embed_scene[valid_ids[0]])
+            # if embed_img is not None:
+            #     object_list_embed.append(embed_img[valid_ids[0]])
             object_list_embed = torch.stack(object_list_embed, dim=0)
+            return object_list_embed
         random.shuffle(valid_ids)
-        objid_embeds = self.llama_model.model.embed_tokens.weight[self.objid_start_idx:self.objid_end_idx]  # 200 * 4096
         if not self.train_emb:
             objid_embeds = objid_embeds.detach()
         selected_objid_embeds = objid_embeds[valid_ids]
@@ -343,8 +364,8 @@ class Chat3D(nn.Module):
             else:
                 object_list_embed = torch.zeros((selected_objid_embeds.shape[0] * 3, selected_objid_embeds.shape[1]), dtype=selected_objid_embeds.dtype, device=selected_objid_embeds.device)
                 object_list_embed[0::3, :] = selected_objid_embeds
-                object_list_embed[1::3, :] = embed_img[valid_ids]
-                object_list_embed[2::3, :] = embed_scene[valid_ids]
+                object_list_embed[1::3, :] = embed_scene[valid_ids]
+                object_list_embed[2::3, :] = embed_img[valid_ids]
             return object_list_embed
         if embed_img is None and embed_scene is None:
             object_list_embed = torch.zeros((selected_objid_embeds.shape[0] * 2, selected_objid_embeds.shape[1]), dtype=selected_objid_embeds.dtype, device=selected_objid_embeds.device)
@@ -364,8 +385,8 @@ class Chat3D(nn.Module):
             object_list_embed = torch.zeros((selected_objid_embeds.shape[0] * 4, selected_objid_embeds.shape[1]), dtype=selected_objid_embeds.dtype, device=selected_objid_embeds.device)
             object_list_embed[0::4, :] = selected_objid_embeds
             object_list_embed[1::4, :] = embed_obj[valid_ids]
-            object_list_embed[2::4, :] = embed_img[valid_ids]
-            object_list_embed[3::4, :] = embed_scene[valid_ids]
+            object_list_embed[2::4, :] = embed_scene[valid_ids]
+            object_list_embed[3::4, :] = embed_img[valid_ids]
         return object_list_embed
 
     # def forward_stage1(self, scene_feat, scene_locs, scene_colors, target_captions, is_eval=False, **kwargs):
@@ -547,17 +568,18 @@ class Chat3D(nn.Module):
             )
             object_list_embed = object_list_embed.unsqueeze(0)
             # object_list_embed = nclamp(object_list_embed, min=-0.05, max=0.05)
+            # wrapped_embed = torch.cat([p_0_embed, object_list_embed, p_1_embed, prompt_embed, proj_object_img_embed[i:i+1, obj_ids[i]:obj_ids[i]+1]], dim=1)
             wrapped_embed = torch.cat([p_0_embed, object_list_embed, p_1_embed, prompt_embed], dim=1)
             with self.maybe_autocast():
                 outputs = self.llama_model.generate(
                     inputs_embeds=wrapped_embed,
                     max_new_tokens=self.max_txt_len,
                     # stopping_criteria=stopping_criteria,
-                    num_beams=3,
+                    num_beams=5,
                     # do_sample=True,
                     min_length=1,
                     # top_p=0.9,
-                    repetition_penalty=1.0,
+                    repetition_penalty=3.0,
                     length_penalty=1,
                     temperature=1.0,
                 )
@@ -566,7 +588,6 @@ class Chat3D(nn.Module):
             output_text = output_text.split(self.end_sym)[0]
             output_text = output_text.replace('  ', ' ').replace(' .', '.').strip()
             output_texts.append(output_text)
-
         return output_texts
 
     def forward(self, **kwargs):

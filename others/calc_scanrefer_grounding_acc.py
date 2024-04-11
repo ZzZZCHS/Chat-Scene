@@ -66,7 +66,7 @@ def construct_bbox_corners(center, box_size):
     return corners_3d
 
 
-output_file = "/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/20240401_034453_dp0.1_lr5e-6_sta2_ep3_objalign+objcaption_grounding+caption+regioncaption+qa_addimg_layernorm1_scenedim256_grounding_0/preds_epoch2_step2826.json"
+output_file = "/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/20240409_120423_dp0.1_lr5e-6_sta2_ep2_objaverse#scannet_caption#scanrefer_caption#scannet_region_caption#nr3d_caption#scanrefer#obj_align#scanqa__scanqa#scanrefer#scanrefer_caption#objaverse__noclip_newsys_norm_nosceneforobj/preds_epoch0_step6000_scanrefer.json"
 outputs = json.load(open(output_file, "r"))
 
 
@@ -88,15 +88,16 @@ for i, output in tqdm(enumerate(outputs)):
     obj_id = output["obj_id"]
     instance_locs = instance_attrs[scene_id]["locs"]
     scannet_locs = scannet_attrs[scene_id]["locs"]
+    # instance_name = instance_attrs[scene_id]['objects']
+    # scannet_name = scannet_attrs[scene_id]['objects']
+
     pred = output["pred"]
     instance_num = instance_locs.shape[0]
     pred_id = random.randint(0, instance_num-1)
-    # pred = pred.capitalize()
-    # pred = pred.replace("object", "")
-    # pred = pred.replace("Object", "")
-    # print(pred)
-    # breakpoint()
-    flag = 0
+    # for j in range(len(instance_name)):
+    #     if instance_name[j] == scannet_name[obj_id]:
+    #         pred_id = j
+    # flag = 0
     if "OBJ" in pred:
         tmp = pred.split("OBJ")[1]
         j = 0
@@ -106,25 +107,6 @@ for i, output in tqdm(enumerate(outputs)):
             flag = 1
             if int(tmp[:j]) < instance_num:
                 pred_id = int(tmp[:j])
-    # if "Obj" in pred:
-    #     tmp = pred.split("Obj")[1]
-    #     j = 0
-    #     while tmp[:j+1].isdigit() and j < len(tmp):
-    #         j = j + 1
-    #     if j > 0:
-    #         flag = 1
-    #         if int(tmp[:j]) < instance_num:
-    #             pred_id = int(tmp[:j])
-    # if not flag and "obj" in pred:
-    #     tmp = pred.split("obj")[1]
-    #     j = 0
-    #     while tmp[:j+1].isdigit() and j < len(tmp):
-    #         j = j + 1
-    #     if j > 0:
-    #         flag = 1
-    #         if int(tmp[:j]) < instance_num:
-    #             pred_id = int(tmp[:j])
-    # print(pred_id)
     pred_locs = instance_locs[pred_id].tolist()
     gt_locs = scannet_locs[obj_id].tolist()
     pred_corners = construct_bbox_corners(pred_locs[:3], pred_locs[3:])

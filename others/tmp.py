@@ -109,3 +109,31 @@ with open('annotations/objaverse_caption_train.json', 'w') as f:
 
 with open('annotations/objaverse_caption_val.json', 'w') as f:
     json.dump(val_annos, f, indent=4)
+
+
+train_feats = {}
+val_feats = {}
+
+for obj_id in train_obj_ids:
+    train_feats[obj_id] = feats[obj_id]
+for obj_id in val_obj_ids:
+    val_feats[obj_id] = feats[obj_id]
+    
+torch.save(train_feats, 'annotations/objaverse_uni3d_feature_train.pt')
+torch.save(val_feats, 'annotations/objaverse_uni3d_feature_val.pt')
+
+
+# import os
+# import gzip
+# import numpy as np
+# from tqdm import tqdm
+
+# folder_path = '/mnt/petrelfs/huanghaifeng/share/data/cap3d/8192_npy'
+
+# for filename in tqdm(os.listdir(folder_path)):
+#     if filename.endswith('.npy'):
+#         obj_id = filename.split('_8192')[0]
+#         data = np.load(os.path.join(folder_path, filename))
+#         with gzip.open(os.path.join(folder_path, obj_id + '.gz'), 'wb') as f:
+#             np.save(f, data)
+#         os.remove(os.path.join(folder_path, filename))

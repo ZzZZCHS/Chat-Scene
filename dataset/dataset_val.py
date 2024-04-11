@@ -34,10 +34,9 @@ class ValPTDataset(PTBaseDataset):
 
     def __getitem__(self, index):
         scene_id, scene_feat, scene_img_feat, scene_mask, scene_locs = self.get_anno(index)
-        if "obj_id" in self.anno[index]:
-            obj_id = int(self.anno[index]["obj_id"])
-        else:
-            obj_id = 0
+        obj_id = int(self.anno[index].get('obj_id', 0))
+        pred_id = int(self.anno[index].get('pred_id', 0))
+        sqa_type = int(self.anno[index].get('sqa_type', 0))
         if 'prompt' not in self.anno[index]:
             prompt = random.choice(obj_caption_wid_prompt).replace('<id>', f"<OBJ{obj_id:03}>")
         else:
@@ -77,11 +76,11 @@ class ValPTDataset(PTBaseDataset):
         #         scene_feat = scene_feat[final_mask.bool()]
         #         scene_locs = scene_locs[final_mask.bool()]
         #         scene_colors = scene_colors[final_mask.bool()]
-        return scene_feat, scene_img_feat, scene_mask, scene_locs, obj_id, prompt, ref_captions, scene_id, qid
+        return scene_feat, scene_img_feat, scene_mask, scene_locs, obj_id, prompt, ref_captions, scene_id, qid, pred_id, sqa_type
 
 
 def valuate_collate_fn(batch):
-    scene_feats, scene_img_feats, scene_masks, scene_locs, obj_ids, prompts, ref_captions, scene_ids, qids = zip(*batch)
+    scene_feats, scene_img_feats, scene_masks, scene_locs, obj_ids, prompts, ref_captions, scene_ids, qids, pred_ids, sqa_types = zip(*batch)
     batch_scene_feat, batch_scene_img_feat, batch_scene_locs, batch_scene_mask = process_batch_data(
         scene_feats,
         scene_img_feats, 
@@ -89,6 +88,8 @@ def valuate_collate_fn(batch):
         scene_locs,
     )
     obj_ids = torch.tensor(obj_ids)
+    pred_ids = torch.tensor(pred_ids)
+    sqa_types = torch.tensor(sqa_types)
     return {
         "scene_feat": batch_scene_feat,
         "scene_img_feat": batch_scene_img_feat,
@@ -98,7 +99,9 @@ def valuate_collate_fn(batch):
         "custom_prompt": prompts,
         "ref_captions": ref_captions,
         "scene_id": scene_ids,
-        "qid": qids
+        "qid": qids,
+        "pred_ids": pred_ids,
+        "sqa_types": sqa_types
         # "ids": index
     }
 
