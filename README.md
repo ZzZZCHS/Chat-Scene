@@ -24,15 +24,17 @@ This is an official repo for paper "Chat-3D v2: Bridging 3D Scene and Large Lang
 - Download LLaMA model:
   - Currently, we choose 
 Vicuna-7B as the LLM in our model, which is finetuned from LLaMA-7B.
-  - Download LLaMA-7B from [hugging face](https://huggingface.co/docs/transformers/main/model_doc/llama).
-  - Download [vicuna-7b-delta-v0](https://huggingface.co/lmsys/vicuna-7b-delta-v0) and process it: (`apply_delta.py` is from [huggingface](https://huggingface.co/CarperAI/stable-vicuna-13b-delta/raw/main/apply_delta.py))
+  - Download from official resources:
+    - Download LLaMA-7B (v1) from [hugging face](https://huggingface.co/docs/transformers/main/model_doc/llama).
+    - Download [vicuna-7b-delta-v0](https://huggingface.co/lmsys/vicuna-7b-delta-v0) and process it: (`apply_delta.py` is from [huggingface](https://huggingface.co/CarperAI/stable-vicuna-13b-delta/raw/main/apply_delta.py))
   
-  ```shell
-  python3 model/apply_delta.py \
-          --base /path/to/model_weights/llama-7b \
-          --target vicuna-7b-v0 \
-          --delta lmsys/vicuna-7b-delta-v0
-  ```
+    ```shell
+    python3 model/apply_delta.py \
+            --base /path/to/model_weights/llama-7b \
+            --target vicuna-7b-v0 \
+            --delta lmsys/vicuna-7b-delta-v0
+    ```
+  - If you cannot access to offical LLaMA v1, try the unofficial huggingface [repo](https://huggingface.co/ZzZZCHS/vicuna-7b-v0/tree/main). You can directly download `vicuna-7b-v0` here.
 
   - Change the `llama_model_path` in [config.py](./scripts/config.py) to the location of `vicuna-7b-v0`.
   
