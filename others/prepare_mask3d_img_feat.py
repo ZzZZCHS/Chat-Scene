@@ -74,9 +74,10 @@ segmentor = "mask3d"
 feats = torch.load(f'annotations/scannet_img_dinov2_features.pt')
 new_feats = {}
 item2iou = {}
+version = "100_v3"
 
-for split in ['val', 'train']:
-    instance_attribute_file = f"annotations/scannet_{segmentor}_{split}_attributes.pt"
+for split in ['val']:
+    instance_attribute_file = f"annotations/scannet_{segmentor}_{split}_attributes{version}.pt"
     scannet_attribute_file = f"annotations/scannet_{split}_attributes.pt"
     instance_attrs = torch.load(instance_attribute_file)
     scannet_attrs = torch.load(scannet_attribute_file)
@@ -97,7 +98,6 @@ for split in ['val', 'train']:
                 gt_locs = scannet_locs[obj_id-31].tolist()
                 # print(k)
                 # breakpoint()
-                # flag = 1
                 # break
             pred_corners = construct_bbox_corners(pred_locs[:3], pred_locs[3:])
             gt_corners = construct_bbox_corners(gt_locs[:3], gt_locs[3:])
@@ -111,5 +111,4 @@ for split in ['val', 'train']:
             item2iou[item_id] = max_iou
         
 
-torch.save(new_feats, 'annotations/scannet_img_mask3d_dinov2_features.pt')
-
+torch.save(new_feats, f'annotations/scannet_img_mask3d_dinov2_features{version}.pt')

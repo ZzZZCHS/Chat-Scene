@@ -5,211 +5,6 @@ segmentor = "mask3d"
 feat_file = f"{anno_root}/scannet_{pc_encoder}_feats.pt"
 img_feat_file = f"{anno_root}/scannet_img_dinov2_features.pt"
 seg_img_feat_file = f"{anno_root}/scannet_img_mask3d_dinov2_features.pt"
-# img_feat_file = f"{anno_root}/scannet_llava_img_features.pt"
-# attribute_file = f"{anno_root}/scannet_attributes.json"
-train_file_s2 = [
-    # [
-    #     feat_file,
-    #     f"{anno_root}/scannet_train_attributes.pt",
-    #     f"{anno_root}/obj_align_train_one_scene.json"
-    # ],
-    [
-        feat_file,
-        img_feat_file,
-        f"{anno_root}/scannet_train_attributes.pt",
-        f"{anno_root}/scannet_train_stage2_caption_OBJ.json",
-    ],
-    [
-        feat_file,
-        img_feat_file,
-        f"{anno_root}/scannet_train_attributes.pt",
-        f"{anno_root}/scanrefer_train_stage2_caption_OBJ.json",
-    ],
-    [
-        feat_file,
-        img_feat_file,
-        f"{anno_root}/scannet_train_attributes.pt",
-        f"{anno_root}/scannet_train_region_caption.json",
-    ],
-    [
-        feat_file,
-        img_feat_file,
-        f"{anno_root}/scannet_train_attributes.pt",
-        f"{anno_root}/nr3d_train_stage2_caption_OBJ.json"
-    ],
-    [
-        feat_file,
-        img_feat_file,
-        f"{anno_root}/scannet_train_attributes.pt",
-        f"{anno_root}/scanrefer_train_stage2_grounding_OBJ.json"
-    ],
-    # [
-    #     f"{anno_root}/scannet_{segmentor}_{pc_encoder}_feats.pt",
-    #     f"{anno_root}/scannet_img_mask3d_dinov2_features.pt",
-    #     f"{anno_root}/scannet_{segmentor}_train_attributes.pt",
-    #     f"{anno_root}/scanrefer_{segmentor}_train_stage2_grounding_OBJ.json"
-    # ],
-    [
-        feat_file,
-        img_feat_file,
-        f"{anno_root}/scannet_train_attributes.pt",
-        f"{anno_root}/obj_align_train_OBJ.json"
-    ],
-    # [
-    #     f"{anno_root}/scannet_{segmentor}_{pc_encoder}_feats.pt",
-    #     f"{anno_root}/scannet_img_mask3d_dinov2_features.pt",
-    #     f"{anno_root}/scannet_{segmentor}_train_attributes.pt",
-    #     f"{anno_root}/scanqa_train_stage2.json"
-    # ],
-    [
-        feat_file,
-        img_feat_file,
-        f"{anno_root}/scannet_train_attributes.pt",
-        f"{anno_root}/scanqa_train_stage2.json"
-    ],
-    # [
-    #     f"{anno_root}/scannet_{segmentor}_{pc_encoder}_feats.pt",
-    #     f"{anno_root}/scannet_{segmentor}_train_attributes.pt",
-    #     f"{anno_root}/scanrefer_{segmentor}_train_stage2_caption_iou50.json"
-    # ],
-    # [
-    #     f"{anno_root}/scannet_{segmentor}_{pc_encoder}_feats.pt",
-    #     f"{anno_root}/scannet_{segmentor}_train_attributes.pt",
-    #     f"{anno_root}/scanrefer_{segmentor}_train_stage2_caption_iou25.json"
-    # ],
-    # [
-    #     feat_file,
-    #     f"{anno_root}/scannet_train_attributes.pt",
-    #     f"{anno_root}/sr3d_train_stage2_objxx.json"
-    # # ],
-    # [
-    #     feat_file,
-    #     f"{anno_root}/scannet_train_attributes.pt",
-    #     f"{anno_root}/scene_align_train.json",
-    # ],
-    # [
-    #     feat_file,
-    #     f"{anno_root}/scannet_train_attributes.pt",
-    #     f"{anno_root}/obj_align_train.json",
-    # ],
-    # [
-    #     feat_file,
-    #     f"{anno_root}/scannet_train_attributes.pt",
-    #     f"{anno_root}/scanqa_train_stage2_new.json"
-    # ],
-    # [
-    #     feat_file,
-    #     f"{anno_root}/scannet_train_attributes.pt",
-    #     f"{anno_root}/nr3d_train_stage2_grounding_new.json"
-    # ],
-    # [
-    #     feat_file,
-    #     f"{anno_root}/scannet_train_attributes.pt",
-    #     f"{anno_root}/sr3d_train_stage2_grounding_new.json"
-    # ],
-    # [
-    #     feat_file,
-    #     f"{anno_root}/scannet_val_attributes.pt",
-    #     f"{anno_root}/nr3d_train_stage2_multichoice0.01.json"
-    # ],
-    # [
-    #     feat_file,
-    #     f"{anno_root}/scannet_train_attributes.pt",
-    #     f"{anno_root}/scene_dataset_train_stage2.json"
-    # ]
-]
-val_file_s2 = [
-    # [
-    #     feat_file,
-    #     f"{anno_root}/scannet_train_attributes.pt",
-    #     f"{anno_root}/obj_align_val_one_scene.json"
-    # ],
-    # [
-    #     feat_file,
-    #     img_feat_file,
-    #     f"{anno_root}/scannet_val_attributes.pt",
-    #     f"{anno_root}/scanrefer_val_stage2_caption_OBJ.json"
-    # ],
-    # [
-    #     feat_file,
-    #     f"{anno_root}/scannet_val_attributes.pt",
-    #     f"{anno_root}/nr3d_val_stage2_caption100_OBJ.json"
-    # ],
-    # [
-    #     feat_file,
-    #     img_feat_file,
-    #     f"{anno_root}/scannet_val_attributes.pt",
-    #     f"{anno_root}/obj_align_val_OBJ.json"
-    # ],
-    # [
-    #     f"{anno_root}/scannet_{segmentor}_{pc_encoder}_feats.pt",
-    #     f"{anno_root}/scannet_img_mask3d_dinov2_features.pt",
-    #     f"{anno_root}/scannet_{segmentor}_val_attributes.pt",
-    #     f"{anno_root}/scanrefer_{segmentor}_val_stage2_grounding_OBJ.json"
-    # ],
-    [
-        f"{anno_root}/scannet_{segmentor}_{pc_encoder}_feats.pt",
-        f"{anno_root}/scannet_img_mask3d_dinov2_features.pt",
-        f"{anno_root}/scannet_{segmentor}_val_attributes.pt",
-        f"{anno_root}/scanqa_val_stage2.json"
-    ],
-    # [
-    #     feat_file,
-    #     img_feat_file,
-    #     f"{anno_root}/scannet_val_attributes.pt",
-    #     f"{anno_root}/scanqa_val_stage2.json"
-    # ],
-    # [
-    #     feat_file,
-    #     f"{anno_root}/scannet_val_attributes.pt",
-    #     f"{anno_root}/scanqa_val_stage2_objxx100.json"
-    # ],
-    # [
-    #     f"{anno_root}/scannet_{segmentor}_{pc_encoder}_feats.pt",
-    #     f"{anno_root}/scannet_{segmentor}_val_attributes.pt",
-    #     f"{anno_root}/scanrefer_{segmentor}_val_stage2_caption_iou25.json"
-    # ],
-    # [
-    #     feat_file,
-    #     f"{anno_root}/scannet_val_attributes.pt",
-    #     f"{anno_root}/stage2_val400.json"
-    # ],
-    # [
-    #     feat_file,
-    #     f"{anno_root}/scannet_val_attributes.pt",
-    #     f"{anno_root}/nr3d_val_stage2_objxx.json"
-    # ],
-    # [
-    #     feat_file,
-    #     f"{anno_root}/scannet_val_attributes.pt",
-    #     f"{anno_root}/scene_align_val.json",
-    # ],
-    # [
-    #     feat_file,
-    #     f"{anno_root}/scannet_val_attributes.pt",
-    #     f"{anno_root}/obj_align_val.json"
-    # ],
-    # [
-    #     feat_file,
-    #     f"{anno_root}/scannet_val_attributes.pt",
-    #     f"{anno_root}/scanqa_val_stage2_objxx.json"
-    # ],
-    # [
-    #     feat_file,
-    #     f"{anno_root}/scannet_val_attributes.pt",
-    #     f"{anno_root}/sr3d_val_stage2_grounding_new.json"
-    # ],
-    # [
-    #     feat_file,
-    #     f"{anno_root}/scannet_val_attributes.pt",
-    #     f"{anno_root}/nr3d_val_stage2_multichoice0.01.json"
-    # ],
-    # [
-    #     feat_file,
-    #     f"{anno_root}/scannet_val_attributes.pt",
-    #     f"{anno_root}/scene_dataset_val_stage2.json"
-    # ]
-]
 
 train_tag = 'scannet_caption'
 val_tag = 'scanqa'
@@ -221,7 +16,7 @@ train_file_dict = {
         f"{anno_root}/scannet_train_attributes.pt",
         f"{anno_root}/scannet_train_stage2_caption_OBJ.json"
     ],
-    'scanrefer_caption': [
+    'scan2cap': [
         feat_file,
         img_feat_file,
         f"{anno_root}/scannet_train_attributes.pt",
@@ -269,33 +64,39 @@ train_file_dict = {
         img_feat_file,
         f"{anno_root}/scannet_train_attributes.pt",
         f"{anno_root}/sqa3d_train.json"
-    ]
+    ],
+    'scanrefer_seg': [
+        f"{anno_root}/scannet_{segmentor}_{pc_encoder}_feats100.pt",
+        f"{anno_root}/scannet_img_mask3d_dinov2_features100.pt",
+        f"{anno_root}/scannet_{segmentor}_train_attributes100.pt",
+        f"{anno_root}/scanrefer_{segmentor}_train_stage2_grounding_OBJ100.json"
+    ],
+    'scan2cap_seg': [
+        f"{anno_root}/scannet_{segmentor}_{pc_encoder}_feats100.pt",
+        f"{anno_root}/scannet_img_mask3d_dinov2_features100.pt",
+        f"{anno_root}/scannet_{segmentor}_train_attributes100.pt",
+        f"{anno_root}/scanrefer_{segmentor}_train_stage2_caption_OBJ100.json"
+    ],
 }
 
 val_file_dict = {
     'scanqa': [
         f"{anno_root}/scannet_{segmentor}_{pc_encoder}_feats.pt",
-        seg_img_feat_file,
+        f"{anno_root}/scannet_img_mask3d_dinov2_features.pt",
         f"{anno_root}/scannet_{segmentor}_val_attributes.pt",
         f"{anno_root}/scanqa_val.json"
     ],
     'scanrefer': [
-        f"{anno_root}/scannet_{segmentor}_{pc_encoder}_feats.pt",
-        seg_img_feat_file,
-        f"{anno_root}/scannet_{segmentor}_val_attributes.pt",
-        f"{anno_root}/scanrefer_{segmentor}_val_stage2_grounding_OBJ.json"
+        f"{anno_root}/scannet_{segmentor}_{pc_encoder}_feats100_v2.pt",
+        f"{anno_root}/scannet_img_mask3d_dinov2_features100_v2.pt",
+        f"{anno_root}/scannet_{segmentor}_val_attributes100_v2.pt",
+        f"{anno_root}/scanrefer_{segmentor}_val_stage2_grounding_OBJ100_v2.json"
     ],
     'scan2cap': [
-        f"{anno_root}/scannet_{segmentor}_{pc_encoder}_feats.pt",
-        seg_img_feat_file,
-        f"{anno_root}/scannet_{segmentor}_val_attributes.pt",
-        f"{anno_root}/scanrefer_{segmentor}_val_stage2_caption_OBJ.json"
-    ],
-    'scanrefer_caption': [
-        feat_file,
-        img_feat_file,
-        f"{anno_root}/scannet_val_attributes.pt",
-        f"{anno_root}/scanrefer_val_stage2_caption_OBJ.json"
+        f"{anno_root}/scannet_{segmentor}_{pc_encoder}_feats100_v2.pt",
+        f"{anno_root}/scannet_img_mask3d_dinov2_features100_v2.pt",
+        f"{anno_root}/scannet_{segmentor}_val_attributes100_v2.pt",
+        f"{anno_root}/scanrefer_{segmentor}_val_stage2_caption_OBJ100_v2.json"
     ],
     'objaverse': [
         f"{anno_root}/objaverse_uni3d_feature_val.pt",
@@ -311,7 +112,7 @@ val_file_dict = {
     ],
     'sqa3d': [
         f"{anno_root}/scannet_{segmentor}_{pc_encoder}_feats.pt",
-        seg_img_feat_file,
+        f"{anno_root}/scannet_img_mask3d_dinov2_features.pt",
         f"{anno_root}/scannet_{segmentor}_val_attributes.pt",
         f"{anno_root}/sqa3d_val.json"
     ]
@@ -366,7 +167,7 @@ lora = dict(
       "down_proj"
     ],
     lora_r=64,
-    lora_alpha=16,
+    lora_alpha=128, 
     lora_dropout=0.05
 )
 

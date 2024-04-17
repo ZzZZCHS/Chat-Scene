@@ -21,6 +21,7 @@ from transformers import StoppingCriteria, StoppingCriteriaList
 from IPython import embed
 import contextlib
 import math
+from dataset.base_dataset import update_caption, recover_caption
 
 logger = logging.getLogger(__name__)
 
@@ -39,43 +40,6 @@ def print_grad_status(model):
             '(Trainable)' if p.requires_grad else '(Fixed)',
             '(Has grad):' if p.grad is not None else '(No grad backward):',
             list(p.shape)))
-
-
-class StoppingCriteriaSub(StoppingCriteria):
-    def __init__(self, stops=[], encounters=1):
-        super().__init__()
-        self.stops = stops
-
-    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor):
-        for stop in self.stops:
-            if torch.all((stop == input_ids[0][-len(stop):])).item():
-                return True
-        return False
-
-
-def init_weights(std=0.02):
-    def _init_weights(module):
-        """Initialize the weights"""
-        if isinstance(module, nn.Linear):
-            module.weight.data.normal_(mean=0.0, std=std)
-            if module.bias is not None:
-                module.bias.data.zero_()
-        elif isinstance(module, nn.LayerNorm):
-            module.bias.data.zero_()
-            module.weight.data.fill_(1.0)
-    return _init_weights
-
-
-class CustomGradLayer(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, input, coefficient=1.0):
-        ctx.coefficient = coefficient
-        return input
-
-    @staticmethod
-    def backward(ctx, grad_output):
-        grad_input = grad_output * ctx.coefficient
-        return grad_input, None
 
 
 class Chat3D(nn.Module):
@@ -202,28 +166,7 @@ class Chat3D(nn.Module):
             self.llama_model = None
             self.llama_dim = 4096
 
-        # self.object_input_proj = nn.Sequential(
-        #     nn.Linear(self.input_dim, self.input_dim),
-        #     # nn.ReLU(),
-        #     # nn.LayerNorm(self.input_dim),
-        # )
-        # self.coord_proj = nn.Sequential(
-        #     nn.Linear(3, self.attr_dim),
-        #     # nn.ReLU(),
-        #     # nn.LayerNorm(self.attr_dim),
-        #     # nn.Dropout(mlp_dropout)
-        # )
-        # self.color_proj = nn.Sequential(
-        #     nn.Linear(3, self.attr_dim),
-        #     # nn.ReLU(),
-        #     # nn.LayerNorm(self.attr_dim),
-        #     # nn.Dropout(mlp_dropout)
-        # )
-        # self.color_dropout = nn.Dropout(mlp_dropout)
-        self.pos_embedding = PositionEmbeddingCoordsSine(d_pos=self.scene_dim)
-        self.pos_proj = nn.Sequential(
-            nn.Linear(self.scene_dim, self.scene_dim)
-        )
+        
         self.object_proj = nn.Sequential(
             nn.Linear(self.input_dim, self.llama_dim),
             nn.GELU(),
@@ -237,6 +180,10 @@ class Chat3D(nn.Module):
         if not self.train_img_proj:
             for p in self.object_img_proj.parameters():
                 p.requires_grad = False
+        self.pos_embedding = PositionEmbeddingCoordsSine(d_pos=self.scene_dim)
+        self.pos_proj = nn.Sequential(
+            nn.Linear(self.scene_dim, self.scene_dim)
+        )
         # self.object_layer_norm = nn.LayerNorm(self.input_dim)
         # self.scene_proj = nn.Sequential(
         #     nn.Linear(self.llama_dim, self.llama_dim),
@@ -292,7 +239,7 @@ class Chat3D(nn.Module):
             return self.llama_model.model.embed_tokens(token_ids)
 
     def prepare_fixed_embed(self):
-        prompt = self.system + " " + self.instruction + ' ' + self.role[0] + ": " 
+        prompt = self.system + " " + self.instruction + " " + self.role[0] + ": " 
         p_0, p_1 = prompt.split("<REPLACE>")
         p_0_token = self.llama_tokenizer(p_0, return_tensors="pt", add_special_tokens=True)
         p_1_token = self.llama_tokenizer(p_1, return_tensors="pt", add_special_tokens=False)
@@ -312,12 +259,6 @@ class Chat3D(nn.Module):
         return embeds
 
     def encode_object_feat(self, feat, img_feat, locs):
-        # size_emb = self.coord_proj(locs[:, :, 3:6])
-        # gmm_weights = colors[..., :1]
-        # gmm_means = colors[..., 1:]
-        # gmm_colors = torch.sum(gmm_weights * gmm_means, dim=2)
-        # color_emb = self.color_proj(gmm_colors)
-        # feat = torch.cat([feat, size_emb, color_emb], dim=-1)
         feat = torch.nn.functional.normalize(feat, dim=-1)
         img_feat = torch.nn.functional.normalize(img_feat, dim=-1)
         return feat, img_feat
@@ -330,9 +271,8 @@ class Chat3D(nn.Module):
         dist_attn = torch.nn.functional.softmax(-dist, dim=-1)
         return dist_attn
 
-    def get_object_list_embed(self, embed_obj, embed_img, embed_scene, scene_mask, obj_id):
-        valid_ids = torch.where(scene_mask == 1)[0].tolist()
-
+    def get_object_list_embed(self, embed_obj, embed_img, embed_scene, scene_mask, obj_id, assigned_ids):
+        valid_ids = torch.where(scene_mask)[0].tolist()
         # object_list_embed = []
         # object_list_embed.append(embed_obj[obj_id])
         # object_list_embed = torch.stack(object_list_embed, dim=0)
@@ -353,9 +293,10 @@ class Chat3D(nn.Module):
             object_list_embed = torch.stack(object_list_embed, dim=0)
             return object_list_embed
         random.shuffle(valid_ids)
+        assigned_ids = assigned_ids[valid_ids]
         if not self.train_emb:
             objid_embeds = objid_embeds.detach()
-        selected_objid_embeds = objid_embeds[valid_ids]
+        selected_objid_embeds = objid_embeds[assigned_ids]
         if self.no_obj:
             if embed_img is None:
                 object_list_embed = torch.zeros((selected_objid_embeds.shape[0] * 2, selected_objid_embeds.shape[1]), dtype=selected_objid_embeds.dtype, device=selected_objid_embeds.device)
@@ -389,56 +330,15 @@ class Chat3D(nn.Module):
             object_list_embed[3::4, :] = embed_img[valid_ids]
         return object_list_embed
 
-    # def forward_stage1(self, scene_feat, scene_locs, scene_colors, target_captions, is_eval=False, **kwargs):
-    #     object_embed = self.encode_object_feat(scene_feat, scene_locs, scene_colors)
-    #     proj_object_embed = self.object_proj(object_embed)
-    #     proj_object_embed = proj_object_embed.squeeze(1)
-    #     # cls_output = self.cls_head(proj_object_embed)
-    #     # cls_loss = F.cross_entropy(cls_output, target_clses)
-    #     # cls_acc = (cls_output.max(dim=-1)[1] == target_clses).float().mean()
-    #     # norm_object_embed = torch.nn.functional.normalize(proj_object_embed, dim=-1) * self.obj_norm_scale
-    #     norm_object_embed = proj_object_embed
-    #     target_embeds = []
-    #     for target_caption in target_captions:
-    #         target_tokens = self.llama_tokenizer(
-    #             target_caption,
-    #             return_tensors="pt",
-    #             padding="longest",
-    #             truncation=True,
-    #             max_length=self.max_txt_len,
-    #             add_special_tokens=False
-    #         ).to(norm_object_embed.device)
-    #         token_mask = target_tokens["attention_mask"].unsqueeze(-1)
-    #         target_embed = self.llama_model.model.embed_tokens(target_tokens.input_ids)  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    #         target_embed = (target_embed * token_mask).sum(1) / token_mask.sum(1)
-    #         target_embed = target_embed.mean(dim=0)
-    #         target_embeds.append(target_embed)
-    #     target_embeds = torch.stack(target_embeds, dim=0).to(norm_object_embed.device)
-    #     cosine_loss = F.cosine_embedding_loss(norm_object_embed, target_embeds.detach(), torch.tensor([1]).to(norm_object_embed.device))
-    #     l2_loss = F.mse_loss(proj_object_embed, target_embeds.detach())
-    #     # print(torch.norm(pc_embed[:1], p=2), torch.norm(target_embeds[:1], p=2))
-    #     loss = cosine_loss
-    #     return dict(
-    #         loss=loss,
-    #         cosine_loss=cosine_loss,
-    #         # cls_loss=cls_loss,
-    #         l2_loss=l2_loss,
-    #         # cls_acc=cls_acc.detach().cpu(),
-    #         cosine_score=1. - cosine_loss.detach().cpu(),
-    #         obj_norm=proj_object_embed.norm(dim=-1).mean().detach().cpu(),
-    #         target_norm=target_embeds.norm(dim=-1).mean().detach().cpu(),
-    #         l2_dis=l2_loss.detach().cpu()
-    #     )
-    
     def get_min_max_coord(self, xyz, scene_mask):
         scene_mask = scene_mask.unsqueeze(-1).expand_as(xyz)
-        masked_xyz_min = torch.where(scene_mask > 0, xyz, torch.full_like(xyz, float('inf')))
-        masked_xyz_max = torch.where(scene_mask > 0, xyz, torch.full_like(xyz, float('-inf')))
+        masked_xyz_min = torch.where(scene_mask, xyz, torch.full_like(xyz, float('inf')))
+        masked_xyz_max = torch.where(scene_mask, xyz, torch.full_like(xyz, float('-inf')))
         mins = masked_xyz_min.min(dim=1)[0]
         maxs = masked_xyz_max.max(dim=1)[0]
         return mins, maxs
 
-    def forward_stage2(self, scene_feat, scene_img_feat, scene_locs, scene_mask, obj_ids, questions, answers, is_eval=False, **kwargs):
+    def forward_train(self, scene_feat, scene_img_feat, scene_locs, scene_mask, obj_ids, assigned_ids, questions, answers, is_eval=False, **kwargs):
         object_embed, object_img_embed = self.encode_object_feat(scene_feat, scene_img_feat, scene_locs)
         device = object_embed.device
         batch_size = object_embed.shape[0]
@@ -454,7 +354,7 @@ class Chat3D(nn.Module):
             pos_embed = self.pos_embedding(scene_locs[:, :, :3], input_range=[mins, maxs])
             pos_embed = self.pos_proj(pos_embed)
             scene_embed = obj_embed + pos_embed
-            scene_embed = self.relation_module(scene_embed, src_key_padding_mask=~(scene_mask.bool()))
+            scene_embed = self.relation_module(scene_embed, src_key_padding_mask=~scene_mask)
             proj_scene_embed = self.scene_proj(scene_embed)
         
         input_embed_list, attn_list, target_list = [], [], []
@@ -470,7 +370,8 @@ class Chat3D(nn.Module):
                 proj_object_img_embed[i] if self.add_img_token else None, 
                 proj_scene_embed[i] if self.add_scene_token else None, 
                 scene_mask[i],
-                obj_ids[i]
+                obj_ids[i],
+                assigned_ids[i]
             )
             # object_list_embed = nclamp(object_list_embed, min=-0.05, max=0.05)
             wrapped_embed = torch.cat([p_0_embed, object_list_embed, p_1_embed, prompt_embed], dim=0)
@@ -509,17 +410,6 @@ class Chat3D(nn.Module):
         targets = pad_and_trim(target_list, max_seq_len, batch_first=True, padding_value=-100).to(device)
 
         
-        # input_embeds = torch.zeros([batch_size, max_seq_len, dim], dtype=input_embed_list[0].dtype).to(device)
-        # attention_mask = torch.zeros([batch_size, max_seq_len], dtype=attn_list[0].dtype).to(device)
-        # targets = torch.zeros([batch_size, max_seq_len], dtype=target_list[0].dtype).to(device).fill_(-100)
-        # for i in range(len(input_embed_list)):
-        #     input_embed = input_embed_list[i]
-        #     attn = attn_list[i]
-        #     target = target_list[i]
-        #     input_embeds[i, :min(input_embed.shape[0], max_seq_len), :] = input_embed[:min(input_embed.shape[0], max_seq_len)]
-        #     attention_mask[i, :min(attn.shape[0], max_seq_len)] = attn[:min(input_embed.shape[0], max_seq_len)]
-        #     targets[i, :min(target.shape[0], max_seq_len)] = target[:min(input_embed.shape[0], max_seq_len)]
-
         with self.maybe_autocast():
             outputs = self.llama_model(
                 inputs_embeds=input_embeds,
@@ -536,7 +426,7 @@ class Chat3D(nn.Module):
             max_seq_len=max_seq_len
         )
 
-    def evaluate(self, scene_feat, scene_img_feat, scene_locs, scene_mask, custom_prompt, obj_ids, is_eval=True, **kwargs):
+    def evaluate(self, scene_feat, scene_img_feat, scene_locs, scene_mask, custom_prompt, obj_ids, assigned_ids, is_eval=True, **kwargs):
         object_embed, object_img_embed = self.encode_object_feat(scene_feat, scene_img_feat, scene_locs)
         device = object_embed.device
         batch_size, obj_num = object_embed.shape[:2]
@@ -550,7 +440,7 @@ class Chat3D(nn.Module):
             pos_embed = self.pos_embedding(scene_locs[:, :, :3], input_range=[mins, maxs])
             pos_embed = self.pos_proj(pos_embed)
             scene_embed = obj_embed + pos_embed
-            scene_embed = self.relation_module(scene_embed, src_key_padding_mask=~(scene_mask.bool()))
+            scene_embed = self.relation_module(scene_embed, src_key_padding_mask=~scene_mask)
             proj_scene_embed = self.scene_proj(scene_embed)
 
         output_texts = []
@@ -558,17 +448,17 @@ class Chat3D(nn.Module):
         p_1_embed = self.p_1_embed.to(device).unsqueeze(0)
         for i in range(batch_size):
             tmp_prompt = f" {custom_prompt[i]} {self.role[1]}: "
+            tmp_prompt = update_caption(tmp_prompt, assigned_ids[i])
             prompt_embed = self.get_text_emb(tmp_prompt, device=device)
             object_list_embed = self.get_object_list_embed(
                 proj_object_embed[i], 
                 proj_object_img_embed[i] if self.add_img_token else None, 
                 proj_scene_embed[i] if self.add_scene_token else None, 
                 scene_mask[i],
-                obj_ids[i]
+                obj_ids[i],
+                assigned_ids[i]
             )
             object_list_embed = object_list_embed.unsqueeze(0)
-            # object_list_embed = nclamp(object_list_embed, min=-0.05, max=0.05)
-            # wrapped_embed = torch.cat([p_0_embed, object_list_embed, p_1_embed, prompt_embed, proj_object_img_embed[i:i+1, obj_ids[i]:obj_ids[i]+1]], dim=1)
             wrapped_embed = torch.cat([p_0_embed, object_list_embed, p_1_embed, prompt_embed], dim=1)
             with self.maybe_autocast():
                 outputs = self.llama_model.generate(
@@ -587,16 +477,13 @@ class Chat3D(nn.Module):
             output_text = self.llama_tokenizer.decode(output_token)
             output_text = output_text.split(self.end_sym)[0]
             output_text = output_text.replace('  ', ' ').replace(' .', '.').strip()
+            output_text = recover_caption(output_text, assigned_ids[i].tolist())
             output_texts.append(output_text)
         return output_texts
 
     def forward(self, **kwargs):
-        if "target_captions" in kwargs:
-            return self.forward_stage1(**kwargs)
         if "answers" in kwargs:
             return self.forward_stage2(**kwargs)
-        if "conversations" in kwargs:
-            return self.forward_stage3(**kwargs)
         if "custom_prompt" in kwargs:
             return self.evaluate(**kwargs)
         return None

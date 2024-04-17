@@ -264,7 +264,7 @@ def evaluate(
     dist.barrier()
     if is_main_process():
         save_preds = []
-        for rank in range(4):
+        for rank in range(config.gpu_num):
             path = os.path.join(config.output_dir, f"preds_epoch{epoch}_step{global_step}_rank{rank}_{eval_name}.json")
             if os.path.exists(path):
                 preds = json.load(open(path, "r"))
@@ -275,21 +275,16 @@ def evaluate(
             json.dump(save_preds, f, indent=4)
 
     val_scores = {}
-
-    if eval_name == 'scanqa':
-        if is_main_process() and len(save_preds) > 0:
+    if is_main_process() and len(save_preds) > 0:
+        if eval_name == 'scanqa':
             val_scores = calc_scanqa_score(save_preds, tokenizer, scorers, config)
-    elif eval_name == 'scanrefer':
-        if is_main_process() and len(save_preds) > 0:
+        elif eval_name == 'scanrefer':
             val_scores = calc_scanrefer_score(save_preds, config)
-    elif eval_name == "scan2cap":
-        if is_main_process() and len(save_preds) > 0:
+        elif eval_name == "scan2cap":
             val_scores = calc_scan2cap_score(save_preds, tokenizer, scorers, config)
-    elif eval_name == "sqa3d":
-        if is_main_process() and len(save_preds) > 0:
+        elif eval_name == "sqa3d":
             val_scores = calc_sqa3d_score(save_preds, tokenizer, scorers, config)
-    else:
-        if is_main_process() and len(save_preds) > 0:
+        else:
             tmp_preds = {}
             tmp_targets = {}
             acc = 0
@@ -315,8 +310,7 @@ def evaluate(
                         val_scores[f"[{eval_name}] {m}"] = sc
                 else:
                     val_scores[f"[{eval_name}] {method}"] = score
-
-    print(json.dumps(val_scores, indent=4))
+        print(json.dumps(val_scores, indent=4))
     return val_scores
 
 

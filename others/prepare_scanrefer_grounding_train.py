@@ -67,14 +67,14 @@ def construct_bbox_corners(center, box_size):
     return corners_3d
 
 
-# outputs = json.load(open("outputs/2023-11-15-231032_dp0.1_lr2e-4_sta2_ep3_objscale200_scenescale50_bs1_cosine_objalign_scenealign_mean/preds_epoch-1_step0.json", "r"))
-
-# split = "train"
+# count = [0] * 100
+# split = "val"
 # segmentor = "mask3d"
 # annos = json.load(open(f"annotations/scanrefer_{split}_stage2_grounding_OBJ.json", "r"))
 # new_annos = []
+# version = "100_v2"
 
-# instance_attribute_file = f"annotations/scannet_{segmentor}_{split}_attributes.pt"
+# instance_attribute_file = f"annotations/scannet_{segmentor}_{split}_attributes{version}.pt"
 # scannet_attribute_file = f"annotations/scannet_{split}_attributes.pt"
 
 # instance_attrs = torch.load(instance_attribute_file)
@@ -99,6 +99,7 @@ def construct_bbox_corners(center, box_size):
 #         if iou > max_iou:
 #             max_iou = iou
 #             max_id = pred_id
+#     count[max_id] += 1
 #     if split == "train":
 #         if max_iou > 0.75:
 #             new_annos.append({
@@ -116,10 +117,11 @@ def construct_bbox_corners(center, box_size):
 #         })
 
 # print(len(new_annos))
+# print(count)
 
-# with open(f"annotations/scanrefer_{segmentor}_{split}_stage2_grounding_OBJ.json", "w") as f:
+# with open(f"annotations/scanrefer_{segmentor}_{split}_stage2_grounding_OBJ{version}.json", "w") as f:
 #     json.dump(new_annos, f, indent=4)
-
+# exit()
 
 split = "val"
 encoder = "mask3d"
@@ -128,11 +130,14 @@ annos = json.load(open(f"annotations/scanrefer_{split}_stage2_objxx.json", "r"))
 new_annos = []
 
 print(len(annos))
-corpus = {}
+corpus = defaultdict(list)
 for anno in annos:
     gt_key = f"{anno['scene_id']}|{anno['obj_id']}"
     # corpus[gt_key] = [f"sos {caption} eos".replace('\n', ' ') for caption in anno['ref_captions']]
-    corpus[gt_key] = anno['ref_captions']
+    if split == "train":
+        corpus[gt_key].append(anno['caption'])
+    else:
+        corpus[gt_key] = anno['ref_captions']
 
 # myKeys = list(corpus.keys())
 # myKeys.sort()
@@ -140,8 +145,9 @@ for anno in annos:
 # with open('annotations/scan2cap_val_corpus.json', 'w') as f:
 #     json.dump(corpus, f, indent=4)
 # exit()
-
-instance_attribute_file = f"annotations/scannet_{encoder}_{split}_attributes.pt"
+count = [0] * 100
+version = "100_v2"
+instance_attribute_file = f"annotations/scannet_{encoder}_{split}_attributes{version}.pt"
 scannet_attribute_file = f"annotations/scannet_{split}_attributes.pt"
 
 instance_attrs = torch.load(instance_attribute_file)
@@ -151,8 +157,9 @@ prompt_templates = []
 with open('prompts/scanrefer_caption_templates.txt') as f:
     prompt_templates = [p.strip() for p in f.readlines()]
 
-covered_ids = defaultdict(set)
-covered_num = 0
+
+covered25_num, covered50_num = 0, 0
+count_all, count_0 = 0, 0
 for scene_id in tqdm(instance_attrs.keys()):
     instance_locs = instance_attrs[scene_id]["locs"]
     scannet_locs = scannet_attrs[scene_id]["locs"]
@@ -173,23 +180,57 @@ for scene_id in tqdm(instance_attrs.keys()):
                 max_id = gt_id
         if f"{scene_id}|{max_id}" not in corpus:
             continue
-        if f"{scene_id}|{max_id}" in corpus:
-            covered_ids[scene_id].add(max_id)
         if max_iou > gt_match_iou[max_id]:
             gt_match_iou[max_id] = max_iou
             gt_match_id[max_id] = pred_id
+    # for gt_id in range(len(scannet_locs)):
+    #     if f"{scene_id}|{gt_id}" not in corpus:
+    #         continue
+    #     gt_locs = scannet_locs[gt_id].tolist()
+    #     gt_corners = construct_bbox_corners(gt_locs[:3], gt_locs[3:])
+    #     max_id = max_iou = -1
+    #     for pred_id in range(len(instance_locs)):
+    #         pred_locs = instance_locs[pred_id].tolist()
+    #         pred_corners = construct_bbox_corners(pred_locs[:3], pred_locs[3:])
+    #         iou = box3d_iou(pred_corners, gt_corners)
+    #         if iou > max_iou:
+    #             max_iou = iou
+    #             max_id = pred_id
+    #     gt_match_iou[gt_id] = max_iou
+    #     gt_match_id[gt_id] = max_id
     for gt_id, pred_id in enumerate(gt_match_id):
+        if f"{scene_id}|{gt_id}" in corpus:
+            count_all += len(corpus[f"{scene_id}|{gt_id}"])
         if pred_id == -1:
             continue
-        new_annos.append({
-            'scene_id': scene_id,
-            'obj_id': gt_id,
-            'pred_id': pred_id,
-            'prompt': random.choice(prompt_templates).replace(f"<id>", f"<OBJ{pred_id:03}>"),
-            "ref_captions": corpus[f"{scene_id}|{gt_id}"],
-            "iou": gt_match_iou[gt_id]
-        })
-    covered_num += len(covered_ids[scene_id])
+        if split == 'train' and gt_match_iou[gt_id] < 0.75:
+            continue
+        if gt_match_iou[gt_id] >= 0.25:
+            covered25_num += len(corpus[f"{scene_id}|{gt_id}"])
+        if gt_match_iou[gt_id] >= 0.5:
+            covered50_num += len(corpus[f"{scene_id}|{gt_id}"])
+        if gt_match_iou[gt_id] == 0:
+            count_0 += len(corpus[f"{scene_id}|{gt_id}"])
+        count[pred_id] += 1
+        if split == 'train':
+            for caption in corpus[f"{scene_id}|{gt_id}"]:
+                new_annos.append({
+                    'scene_id': scene_id,
+                    'obj_id': gt_id,
+                    'pred_id': pred_id,
+                    'prompt': random.choice(prompt_templates).replace(f"<id>", f"<OBJ{pred_id:03}>"),
+                    "caption": caption,
+                    "iou": gt_match_iou[gt_id]
+                })
+        else:
+            new_annos.append({
+                'scene_id': scene_id,
+                'obj_id': gt_id,
+                'pred_id': pred_id,
+                'prompt': random.choice(prompt_templates).replace(f"<id>", f"<OBJ{pred_id:03}>"),
+                "ref_captions": corpus[f"{scene_id}|{gt_id}"],
+                "iou": gt_match_iou[gt_id]
+            })
 
 # filtered_annos = {}
 
@@ -236,7 +277,9 @@ for scene_id in tqdm(instance_attrs.keys()):
 # if len(new_annos) == 0:
 #     new_annos = list(filtered_annos.values())
 print(len(new_annos))
-print(covered_num)
+print(covered25_num, covered50_num)
+print(count_all, count_0)
+# print(count)
 
-with open(f"annotations/scanrefer_{encoder}_{split}_stage2_caption_OBJ.json", "w") as f:
-    json.dump(new_annos, f, indent=4)
+# with open(f"annotations/scanrefer_{encoder}_{split}_stage2_caption_OBJ{version}.json", "w") as f:
+#     json.dump(new_annos, f, indent=4)

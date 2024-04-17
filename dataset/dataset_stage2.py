@@ -5,10 +5,11 @@ import json
 import numpy as np
 import torch
 
-from dataset.base_dataset import PTBaseDataset, process_batch_data, replace_old_id, extract_all_ids
+from dataset.base_dataset import PTBaseDataset, process_batch_data, update_caption
 import glob
 import random
 from prompts.prompts import obj_caption_wid_prompt
+from torch.nn.utils.rnn import pad_sequence
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,7 @@ class S2PTDataset(PTBaseDataset):
 
     def __getitem__(self, index):
         if self.attributes is not None and self.anno[index]['scene_id'] not in self.attributes:
-            print(f"{self.anno[index]['scene_id']} not in attribute file!!!")
+            print(f"{self.anno[index]['scene_id']} not in attribute file!")
             return self.__getitem__(random.randint(0, len(self.anno)-1))
         if "obj_id" in self.anno[index]:
             obj_id = int(self.anno[index]["obj_id"])
@@ -50,18 +51,19 @@ class S2PTDataset(PTBaseDataset):
         else:
             question = self.anno[index]["prompt"]
         caption = self.anno[index]["caption"]
-        scene_id, scene_feat, scene_img_feat, scene_mask, scene_locs = self.get_anno(index)
-        return scene_feat, scene_img_feat, scene_mask, scene_locs, obj_id, caption, question
+        scene_id, scene_feat, scene_img_feat, scene_mask, scene_locs, assigned_ids = self.get_anno(index)
+        caption = update_caption(caption, assigned_ids)
+        question = update_caption(question, assigned_ids)
+        return scene_feat, scene_img_feat, scene_mask, scene_locs, obj_id, assigned_ids, caption, question
 
 
 def s2_collate_fn(batch):
-    scene_feats, scene_img_feats, scene_masks, scene_locs, obj_ids, captions, questions = zip(*batch)
-    batch_scene_feat, batch_scene_img_feat, batch_scene_locs, batch_scene_mask = process_batch_data(
-        scene_feats,
-        scene_img_feats,
-        scene_masks,
-        scene_locs
-    )
+    scene_feats, scene_img_feats, scene_masks, scene_locs, obj_ids, assigned_ids, captions, questions = zip(*batch)
+    batch_scene_feat = pad_sequence(scene_feats, batch_first=True)
+    batch_scene_img_feat = pad_sequence(scene_img_feats, batch_first=True)
+    batch_scene_mask = pad_sequence(scene_masks, batch_first=True).to(torch.bool)
+    batch_scene_locs = pad_sequence(scene_locs, batch_first=True)
+    batch_assigned_ids = pad_sequence(assigned_ids, batch_first=True)
     # batch_detach_mask = torch.ones_like(batch_scene_mask, dtype=torch.bool)
     # for i in range(batch_detach_mask.shape[0]):
     #     batch_detach_mask[i][:detach_masks[i].shape[0]] = detach_masks[i]
@@ -71,6 +73,7 @@ def s2_collate_fn(batch):
         "scene_img_feat": batch_scene_img_feat,
         "scene_locs": batch_scene_locs,
         "scene_mask": batch_scene_mask,
+        "assigned_ids": batch_assigned_ids,
         # "detach_mask": batch_detach_mask,
         "obj_ids": obj_ids,
         "answers": captions,

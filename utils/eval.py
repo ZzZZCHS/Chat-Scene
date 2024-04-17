@@ -68,18 +68,16 @@ def clean_answer(data):
 
 def answer_match(pred, gts):
     # return EM and refined EM
+    if pred in gts:
+        return 1, 1
     for gt in gts:
-        if pred == gt:
-            return 1, 1
-        elif ''.join(pred.split()) in ''.join(gt.split()):
-            return 0, 1
-        elif ''.join(gt.split()) in ''.join(pred.split()):
+        if ''.join(pred.split()) in ''.join(gt.split()) or ''.join(gt.split()) in ''.join(pred.split()):
             return 0, 1
     return 0, 0
 
 
-def calc_scanrefer_score(preds, config):
-    instance_attribute_file = f"annotations/scannet_{config.segmentor}_val_attributes.pt"
+def calc_scanrefer_score(preds, config=None):
+    instance_attribute_file = config.val_file_dict['scanrefer'][2] if config is not None else "annotations/scannet_mask3d_val_attributes100.pt"
     scannet_attribute_file = "annotations/scannet_val_attributes.pt"
 
     instance_attrs = torch.load(instance_attribute_file, map_location='cpu')
@@ -133,8 +131,8 @@ def calc_scanrefer_score(preds, config):
     return val_scores
 
 
-def calc_scan2cap_score(preds, tokenizer, scorers, config):
-    instance_attribute_file = f"annotations/scannet_{config.segmentor}_val_attributes.pt"
+def calc_scan2cap_score(preds, tokenizer, scorers, config=None):
+    instance_attribute_file = config.val_file_dict['scan2cap'][2] if config is not None else "annotations/scannet_mask3d_val_attributes100.pt"
     scannet_attribute_file = "annotations/scannet_val_attributes.pt"
 
     instance_attrs = torch.load(instance_attribute_file, map_location='cpu')
@@ -226,7 +224,7 @@ def calc_scan2cap_score(preds, tokenizer, scorers, config):
     return val_scores
 
 
-def calc_scanqa_score(preds, tokenizer, scorers, config):
+def calc_scanqa_score(preds, tokenizer, scorers, config=None):
     val_scores = {}
     tmp_preds = {}
     tmp_targets = {}
@@ -263,7 +261,7 @@ def calc_scanqa_score(preds, tokenizer, scorers, config):
     return val_scores
 
 
-def calc_sqa3d_score(preds, tokenizer, scorers, config):
+def calc_sqa3d_score(preds, tokenizer, scorers, config=None):
     val_scores = {}
     tmp_preds = {}
     tmp_targets = {}

@@ -62,65 +62,65 @@ from collections import defaultdict
 # val_scans = [line.rstrip() for line in open(os.path.join(scannet_root, f'val.txt'))]
 
 
-import pandas as pd
-from tqdm import tqdm
+# import pandas as pd
+# from tqdm import tqdm
 
-obj_csv = pd.read_csv('annotations/Cap3D_automated_Objaverse_no3Dword.csv', header=None)
-obj_ids = []
-obj_cap_dict = {}
-feats = torch.load('annotations/objaverse_uni3d_feature.pt')
+# obj_csv = pd.read_csv('annotations/Cap3D_automated_Objaverse_no3Dword.csv', header=None)
+# obj_ids = []
+# obj_cap_dict = {}
+# feats = torch.load('annotations/objaverse_uni3d_feature.pt')
 
-for obj_id, cap in tqdm(zip(obj_csv[0].values, obj_csv[1].values)):
-    # remove redundant quotation marks, here we do not directly strip because the mark may appear only at one side
-    if obj_id not in feats:
-        continue
-    if cap.startswith('"') and cap.endswith('"'):
-        cap = cap.strip('"')
-    elif cap.startswith("'") and cap.endswith("'"):
-        cap = cap.strip("'")
-    cap = cap.capitalize()
-    obj_ids.append(obj_id)
-    obj_cap_dict[obj_id] = cap
+# for obj_id, cap in tqdm(zip(obj_csv[0].values, obj_csv[1].values)):
+#     # remove redundant quotation marks, here we do not directly strip because the mark may appear only at one side
+#     if obj_id not in feats:
+#         continue
+#     if cap.startswith('"') and cap.endswith('"'):
+#         cap = cap.strip('"')
+#     elif cap.startswith("'") and cap.endswith("'"):
+#         cap = cap.strip("'")
+#     cap = cap.capitalize()
+#     obj_ids.append(obj_id)
+#     obj_cap_dict[obj_id] = cap
 
-train_annos = []
-val_annos = []
-train_obj_ids = obj_ids[:-1000]
-val_obj_ids = obj_ids[-1000:]
-
-
-for obj_id in train_obj_ids:
-    train_annos.append({
-        'scene_id': obj_id,
-        'caption': obj_cap_dict[obj_id]
-    })
-
-for obj_id in val_obj_ids:
-    val_annos.append({
-        'scene_id': obj_id,
-        'ref_captions': [obj_cap_dict[obj_id]]
-    })
-
-print(len(train_annos))
-print(len(val_annos))
+# train_annos = []
+# val_annos = []
+# train_obj_ids = obj_ids[:-1000]
+# val_obj_ids = obj_ids[-1000:]
 
 
-with open('annotations/objaverse_caption_train.json', 'w') as f:
-    json.dump(train_annos, f, indent=4)
+# for obj_id in train_obj_ids:
+#     train_annos.append({
+#         'scene_id': obj_id,
+#         'caption': obj_cap_dict[obj_id]
+#     })
 
-with open('annotations/objaverse_caption_val.json', 'w') as f:
-    json.dump(val_annos, f, indent=4)
+# for obj_id in val_obj_ids:
+#     val_annos.append({
+#         'scene_id': obj_id,
+#         'ref_captions': [obj_cap_dict[obj_id]]
+#     })
+
+# print(len(train_annos))
+# print(len(val_annos))
 
 
-train_feats = {}
-val_feats = {}
+# with open('annotations/objaverse_caption_train.json', 'w') as f:
+#     json.dump(train_annos, f, indent=4)
 
-for obj_id in train_obj_ids:
-    train_feats[obj_id] = feats[obj_id]
-for obj_id in val_obj_ids:
-    val_feats[obj_id] = feats[obj_id]
+# with open('annotations/objaverse_caption_val.json', 'w') as f:
+#     json.dump(val_annos, f, indent=4)
+
+
+# train_feats = {}
+# val_feats = {}
+
+# for obj_id in train_obj_ids:
+#     train_feats[obj_id] = feats[obj_id]
+# for obj_id in val_obj_ids:
+#     val_feats[obj_id] = feats[obj_id]
     
-torch.save(train_feats, 'annotations/objaverse_uni3d_feature_train.pt')
-torch.save(val_feats, 'annotations/objaverse_uni3d_feature_val.pt')
+# torch.save(train_feats, 'annotations/objaverse_uni3d_feature_train.pt')
+# torch.save(val_feats, 'annotations/objaverse_uni3d_feature_val.pt')
 
 
 # import os
@@ -137,3 +137,16 @@ torch.save(val_feats, 'annotations/objaverse_uni3d_feature_val.pt')
 #         with gzip.open(os.path.join(folder_path, obj_id + '.gz'), 'wb') as f:
 #             np.save(f, data)
 #         os.remove(os.path.join(folder_path, filename))
+
+import csv
+id2class = {}
+labels = set()
+class_label_file = "annotations/scannet/scannetv2-labels.combined.tsv"
+with open(class_label_file, "r") as f:
+    csvreader = csv.reader(f, delimiter='\t')
+    csvreader.__next__()
+    for line in csvreader:
+        id2class[line[0]] = line[1]
+        labels.add(line[2])
+print(len(labels))
+

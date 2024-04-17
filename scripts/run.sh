@@ -10,7 +10,7 @@ export MASTER_ADDR=localhost
 stage=2
 epoch=3
 batch_size=32
-max_txt_len=32
+max_txt_len=64
 lr=5e-6
 dp=0.1
 scene_dim=256
@@ -19,15 +19,17 @@ train_emb=True
 train_img_proj=True
 no_obj=False
 add_img_token=True
-add_scene_token=True
+add_scene_token=False
 use_lora=True
 # img_projector_path="annotations/img_projector_llava15_norm.pt"
 img_projector_path=""
 diff_lr=False
-train_tag="scanrefer_caption#nr3d_caption#scanrefer#obj_align#scanqa#sqa3d"
-# train_tag="sqa3d"
-val_tag="scanqa#scanrefer#scan2cap#sqa3d"
-# val_tag="sqa3d"
+train_tag="scanrefer#scanqa#sqa3d#scan2cap#nr3d_caption#obj_align#scannet_caption#scannet_region_caption#scanrefer_seg#scan2cap_seg"
+# train_tag="scanrefer"
+val_tag="scanqa#scanrefer#sqa3d#scan2cap"
+# val_tag="scan2cap#scanrefer"
+lora_r=64
+lora_alpha=16
 
 evaluate=False
 debug=false
@@ -35,16 +37,18 @@ if [ $debug = "true" ]; then
     enable_wandb=False
     gpu_num=1
     do_save=False
-    other_info="debug"
+    other_info="debug_0"
 else
     enable_wandb=True # !!!
     gpu_num=4
     do_save=True
-    other_info="wonewdata"
+    other_info="img2obj" # remember to change !!!!
 fi
 
 tag="${train_tag}__${val_tag}__${other_info}"
 
+# pretrained_path="/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/20240415_045221_dp0.1_lr5e-6_sta2_ep3_scanrefer#scanqa#sqa3d#scan2cap#nr3d_caption#obj_align#scannet_caption#scannet_region_caption#scanrefer_seg#scan2cap_seg__scanqa#scanrefer#sqa3d#scan2cap__randomid/ckpt_00_2723.pth"
+# pretrained_path="/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/20240414_044335_dp0.1_lr5e-6_sta2_ep3_scanrefer#scanqa#sqa3d#scan2cap#nr3d_caption#obj_align#scannet_caption#scannet_region_caption#scanrefer_seg#scan2cap_seg__scanqa#scanrefer#sqa3d#scan2cap__seg100train/ckpt_01_2722.pth"
 # pretrained_path="/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/20240410_152214_dp0.1_lr5e-6_sta2_ep5_scannet_caption#scanrefer_caption#scannet_region_caption#nr3d_caption#scanrefer#obj_align#scanqa__scanqa#scan2cap#scanrefer__lora/ckpt_00_2090.pth"
 # pretrained_path="/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/20240408_223916_dp0.1_lr5e-6_sta2_ep2_objaverse#scannet_caption#scanrefer_caption#scannet_region_caption#nr3d_caption#scanrefer#obj_align#scanqa__scanqa#scanrefer#scanrefer_caption#objaverse__clip10/ckpt_01_9251.pth"
 # pretrained_path="/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/20240408_024901_dp0.1_lr5e-6_sta2_ep1_objaverse#scannet_caption#scanrefer_caption#scannet_region_caption#nr3d_caption#scanrefer#obj_align#scanqa__scanqa#scanrefer#scanrefer_caption#objaverse/ckpt_00.pth"
@@ -98,4 +102,6 @@ python tasks/train.py \
     train_tag "$train_tag" \
     val_tag "$val_tag" \
     optimizer.different_lr.enable "$diff_lr" \
-    model.use_lora "$use_lora"
+    model.use_lora "$use_lora" \
+    lora.lora_r "$lora_r" \
+    lora.lora_alpha "$lora_alpha"

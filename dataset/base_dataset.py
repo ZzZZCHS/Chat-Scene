@@ -5,6 +5,7 @@ from torch.utils.data import Dataset
 import torch
 import glob
 from torch.nn.utils.rnn import pad_sequence
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +83,33 @@ class PTBaseDataset(Dataset):
             scene_feat = scene_feat.unsqueeze(0)
         scene_img_feat = self.scene_img_feats[scene_id] if self.scene_img_feats is not None else torch.zeros((scene_feat.shape[0], self.img_feat_dim))
         scene_mask = self.scene_masks[scene_id] if self.scene_masks is not None else torch.ones(scene_feat.shape[0], dtype=torch.int)
-        return scene_id, scene_feat, scene_img_feat, scene_mask, scene_locs
+        assigned_ids = torch.randperm(200)[:len(scene_locs)]
+        # assigned_ids = torch.randperm(len(scene_locs))
+        return scene_id, scene_feat, scene_img_feat, scene_mask, scene_locs, assigned_ids
+    
+
+def update_caption(caption, new_ids):
+    id_format = "<OBJ\\d{3}>"
+    for match in re.finditer(id_format, caption):
+        idx = match.start()
+        old_id = int(caption[idx+4:idx+7])
+        new_id = int(new_ids[old_id])
+        caption = caption[:idx+4] + f"{new_id:03}" + caption[idx+7:]
+    return caption
+
+
+def recover_caption(caption, new_ids):
+    old_ids = {new_id: i for i, new_id in enumerate(new_ids)}
+    id_format = "<OBJ\\d{3}>"
+    for match in re.finditer(id_format, caption):
+        idx = match.start()
+        new_id = int(caption[idx+4:idx+7])
+        try:
+            old_id = int(old_ids[new_id])
+        except:
+            old_id = random.randint(0, len(new_ids)-1)
+        caption = caption[:idx+4] + f"{old_id:03}" + caption[idx+7:]
+    return caption
 
 
 def process_batch_data(scene_feats, scene_img_feats, scene_masks, scene_locs):
@@ -119,28 +146,10 @@ def extract_all_ids(s):
     return id_list
 
 
-def replace_old_id(s, prefix_sum):
-
-    def is_digit(char):
-        return ord("0") <= ord(char) <= ord("9")
-
-    ret = ""
-    i = 0
-    while i < len(s):
-        if i + 4 < len(s) and (s[i:i+3] == "obj" or s[i:i+3] == "Obj"):
-            ret += s[i:i+3]
-            if is_digit(s[i+3]) and is_digit(s[i+4]):
-                if i < len(s) - 5 and is_digit(s[i+5]):
-                    old_id = int(s[i+3:i+6])
-                    i += 6
-                else:
-                    old_id = int(s[i+3:i+5])
-                    i += 5
-                new_id = int(prefix_sum[old_id]) - 1
-                ret += f"{new_id:02}"
-            else:
-                i += 3
-        else:
-            ret += s[i]
-            i += 1
-    return ret
+if __name__ == "__main__":
+    caption = "<OBJ001> <OBJ002>"
+    assigned_ids = [1, 2, 3]
+    caption = update_caption(caption, assigned_ids)
+    print(caption)
+    caption = recover_caption(caption, assigned_ids)
+    print(caption)
