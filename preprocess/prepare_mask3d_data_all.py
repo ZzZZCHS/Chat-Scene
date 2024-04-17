@@ -178,8 +178,8 @@ def main():
     else:
         for param in tqdm(params):
             fn(param)
+            print(len(ids))
     
-    print(len(ids))
 
     # for split in ['scans', 'scans_test']:
     for split in ['scans']:
