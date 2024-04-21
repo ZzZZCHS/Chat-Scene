@@ -2,7 +2,7 @@ import json
 import torch
 import sys
 sys.path.append(".")
-from models.modeling_llama_new import LlamaForCausalLM
+from models.modeling_llama import LlamaForCausalLM
 from transformers import LlamaTokenizer, LlamaConfig
 from collections import defaultdict
 

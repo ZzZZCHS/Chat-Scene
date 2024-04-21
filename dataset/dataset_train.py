@@ -5,7 +5,7 @@ import json
 import numpy as np
 import torch
 
-from dataset.base_dataset import PTBaseDataset, process_batch_data, update_caption
+from dataset.base_dataset import BaseDataset, process_batch_data, update_caption
 import glob
 import random
 from prompts.prompts import obj_caption_wid_prompt
@@ -15,13 +15,16 @@ logger = logging.getLogger(__name__)
 
 
 
-class S2PTDataset(PTBaseDataset):
+class TrainDataset(BaseDataset):
 
     def __init__(self, ann_list, **kwargs):
         super().__init__()
         feat_file, img_feat_file, attribute_file, anno_file = ann_list[:4]
         self.feats = torch.load(feat_file, map_location='cpu')
-        self.img_feats = torch.load(img_feat_file, map_location='cpu') if img_feat_file is not None else None
+        if img_feat_file is not None and os.path.exists(img_feat_file):
+            self.img_feats = torch.load(img_feat_file, map_location='cpu')
+        else:
+            self.img_feats = None
         self.attributes = torch.load(attribute_file, map_location='cpu') if attribute_file is not None else None
         self.anno = json.load(open(anno_file, 'r'))
 
@@ -40,7 +43,7 @@ class S2PTDataset(PTBaseDataset):
 
     def __getitem__(self, index):
         if self.attributes is not None and self.anno[index]['scene_id'] not in self.attributes:
-            print(f"{self.anno[index]['scene_id']} not in attribute file!")
+            # print(f"{self.anno[index]['scene_id']} not in attribute file!")
             return self.__getitem__(random.randint(0, len(self.anno)-1))
         if "obj_id" in self.anno[index]:
             obj_id = int(self.anno[index]["obj_id"])
@@ -57,7 +60,7 @@ class S2PTDataset(PTBaseDataset):
         return scene_feat, scene_img_feat, scene_mask, scene_locs, obj_id, assigned_ids, caption, question
 
 
-def s2_collate_fn(batch):
+def train_collate_fn(batch):
     scene_feats, scene_img_feats, scene_masks, scene_locs, obj_ids, assigned_ids, captions, questions = zip(*batch)
     batch_scene_feat = pad_sequence(scene_feats, batch_first=True)
     batch_scene_img_feat = pad_sequence(scene_img_feats, batch_first=True)

@@ -4,6 +4,10 @@ import sys
 import torch
 import random
 from tqdm import tqdm
+import re
+import os
+import csv
+from collections import defaultdict
 
 def get_box3d_min_max(corner):
     ''' Compute min and max coordinates for 3D bounding box
@@ -66,11 +70,61 @@ def construct_bbox_corners(center, box_size):
     return corners_3d
 
 
-output_file = "/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/20240409_120423_dp0.1_lr5e-6_sta2_ep2_objaverse#scannet_caption#scanrefer_caption#scannet_region_caption#nr3d_caption#scanrefer#obj_align#scanqa__scanqa#scanrefer#scanrefer_caption#objaverse__noclip_newsys_norm_nosceneforobj/preds_epoch0_step6000_scanrefer.json"
+output_file = "/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/20240419_171033_dp0.1_lr5e-6_sta2_ep3_scanrefer_seg#scan2cap_seg#nr3d_caption_seg#obj_align_seg#scanqa_seg#sqa3d_seg__scanqa#scanrefer#sqa3d#scan2cap__debug/preds_epoch-1_step0_scanrefer.json"
 outputs = json.load(open(output_file, "r"))
 
 
-instance_attribute_file = "annotations/scannet_mask3d_val_attributes.pt"
+unique_multiple_lookup_file = 'annotations/scanrefer_unique_multiple_lookup.json'
+if not os.path.exists(unique_multiple_lookup_file):
+    type2class = {'cabinet':0, 'bed':1, 'chair':2, 'sofa':3, 'table':4, 'door':5,
+            'window':6,'bookshelf':7,'picture':8, 'counter':9, 'desk':10, 'curtain':11,
+            'refrigerator':12, 'shower curtain':13, 'toilet':14, 'sink':15, 'bathtub':16, 'others':17}
+    scannet_labels = type2class.keys()
+    scannet2label = {label: i for i, label in enumerate(scannet_labels)}
+    label_classes_set = set(scannet_labels)
+    raw2label = {}
+    with open('annotations/scannet/scannetv2-labels.combined.tsv', 'r') as f:
+        csvreader = csv.reader(f, delimiter='\t')
+        csvreader.__next__()
+        for line in csvreader:
+            raw_name = line[1]
+            nyu40_name = line[7]
+            if nyu40_name not in label_classes_set:
+                raw2label[raw_name] = scannet2label['others']
+            else:
+                raw2label[raw_name] = scannet2label[nyu40_name]
+    all_sem_labels = defaultdict(list)
+    cache = defaultdict(dict)
+    scanrefer_data = json.load(open('annotations/scanrefer/ScanRefer_filtered.json'))
+    for data in scanrefer_data:
+        scene_id = data['scene_id']
+        object_id = data['object_id']
+        object_name = ' '.join(data['object_name'].split('_'))
+        if object_id not in cache[scene_id]:
+            cache[scene_id][object_id] = {}
+            try:
+                all_sem_labels[scene_id].append(raw2label[object_name])
+            except:
+                all_sem_labels[scene_id].append(17)
+    all_sem_labels = {scene_id: np.array(all_sem_labels[scene_id]) for scene_id in all_sem_labels.keys()}
+    unique_multiple_lookup = defaultdict(dict)
+    for data in scanrefer_data:
+        scene_id = data['scene_id']
+        object_id = data['object_id']
+        object_name = ' '.join(data['object_name'].split('_'))
+        try:
+            sem_label = raw2label[object_name]
+        except:
+            sem_label = 17
+        unique_multiple = 0 if (all_sem_labels[scene_id] == sem_label).sum() == 1 else 1
+        unique_multiple_lookup[scene_id][object_id] = unique_multiple
+    with open(unique_multiple_lookup_file, 'w') as f:
+        json.dump(unique_multiple_lookup, f, indent=4)
+else:
+    unique_multiple_lookup = json.load(open(unique_multiple_lookup_file))
+
+
+instance_attribute_file = "annotations/scannet_mask3d_val_attributes_v2.pt"
 scannet_attribute_file = "annotations/scannet_val_attributes.pt"
 
 instance_attrs = torch.load(instance_attribute_file)
@@ -78,35 +132,41 @@ scannet_attrs = torch.load(scannet_attribute_file)
 
 iou25_acc = 0
 iou50_acc = 0
+unique_iou25_acc = 0
+unique_iou50_acc = 0
+unique_all = 0
+multiple_iou25_acc = 0
+multiple_iou50_acc = 0
+multiple_all = 0
 
 count_list = [0] * 150
 iou25_acc_list = [0] * 150
 iou50_acc_list = [0] * 150
+id_format = "<OBJ\\d{3}>"
 
 for i, output in tqdm(enumerate(outputs)):
     scene_id = output["scene_id"]
-    obj_id = output["obj_id"]
+    obj_id = output["gt_id"]
     instance_locs = instance_attrs[scene_id]["locs"]
     scannet_locs = scannet_attrs[scene_id]["locs"]
+    unique_multiple = unique_multiple_lookup[scene_id][str(obj_id)]
+    if unique_multiple == 0:
+        unique_all += 1
+    else:
+        multiple_all += 1
     # instance_name = instance_attrs[scene_id]['objects']
     # scannet_name = scannet_attrs[scene_id]['objects']
 
     pred = output["pred"]
     instance_num = instance_locs.shape[0]
-    pred_id = random.randint(0, instance_num-1)
-    # for j in range(len(instance_name)):
-    #     if instance_name[j] == scannet_name[obj_id]:
-    #         pred_id = j
-    # flag = 0
-    if "OBJ" in pred:
-        tmp = pred.split("OBJ")[1]
-        j = 0
-        while tmp[:j+1].isdigit() and j < len(tmp):
-            j = j + 1
-        if j > 0:
-            flag = 1
-            if int(tmp[:j]) < instance_num:
-                pred_id = int(tmp[:j])
+    # pred_id = random.randint(0, instance_num-1)
+    pred_id = 0
+    for match in re.finditer(id_format, pred):
+            idx = match.start()
+            cur_id = int(pred[idx+4:idx+7])
+            if cur_id < instance_num:
+                pred_id = cur_id
+                break
     pred_locs = instance_locs[pred_id].tolist()
     gt_locs = scannet_locs[obj_id].tolist()
     pred_corners = construct_bbox_corners(pred_locs[:3], pred_locs[3:])
@@ -114,9 +174,17 @@ for i, output in tqdm(enumerate(outputs)):
     iou = box3d_iou(pred_corners, gt_corners)
     if iou >= 0.25:
         iou25_acc += 1
+        if unique_multiple == 0:
+            unique_iou25_acc += 1
+        else:
+            multiple_iou25_acc += 1
         iou25_acc_list[scannet_locs.shape[0]] += 1
     if iou >= 0.5:
         iou50_acc += 1
+        if unique_multiple == 0:
+            unique_iou50_acc += 1
+        else:
+            multiple_iou50_acc += 1
         iou50_acc_list[scannet_locs.shape[0]] += 1
     count_list[scannet_locs.shape[0]] += 1
     # max_iou = 0.
@@ -133,9 +201,15 @@ for i, output in tqdm(enumerate(outputs)):
     # if max_iou >= 0.5:
     #     iou50_acc += 1
     # print(iou)
-
+print(unique_all, multiple_all)
+print(len(outputs))
 print(f"Acc 0.25 {float(iou25_acc) / len(outputs)}")
 print(f"Acc 0.50 {float(iou50_acc) / len(outputs)}")
+print(f"Unique Acc 0.25 {float(unique_iou25_acc) / unique_all}")
+print(f"Unique Acc 0.50 {float(unique_iou50_acc) / unique_all}")
+print(f"Multiple Acc 0.25 {float(multiple_iou25_acc) / multiple_all}")
+print(f"Multiple Acc 0.50 {float(multiple_iou50_acc) / multiple_all}")
+
 
 
 split_nums = [0, 25, 35, 50, 70, 150]

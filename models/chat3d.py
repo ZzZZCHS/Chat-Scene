@@ -7,20 +7,14 @@ from torch.cuda.amp import autocast as autocast
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .modeling_llama_new import LlamaForCausalLM
+from .modeling_llama import LlamaForCausalLM
 from transformers import LlamaTokenizer, LlamaConfig
-from models.transformer_vanilla import TransformerEncoder, CMT
-from models.helpers import GenericMLP
-from models.position_embedding import PositionEmbeddingCoordsSine, PositionalEmbedding
+from models.position_embedding import PositionEmbeddingCoordsSine
 from peft import LoraConfig, get_peft_model
-from transformers.tokenization_utils_base import AddedToken
 # from models.load_llama import init_llama_model
 from torch.nn.utils.rnn import pad_sequence
 
-from transformers import StoppingCriteria, StoppingCriteriaList
-from IPython import embed
 import contextlib
-import math
 from dataset.base_dataset import update_caption, recover_caption
 
 logger = logging.getLogger(__name__)
@@ -64,9 +58,6 @@ class Chat3D(nn.Module):
         self.grad_scale = config.model.grad_scale
         self.train_emb = config.model.train_emb
         self.train_img_proj = config.model.train_img_proj
-
-        mlp_dropout = config.model.mlp_dropout
-        self.stage = config.model.stage
 
         self.input_dim = config.model.input_dim
         self.img_input_dim = config.model.img_input_dim
@@ -184,12 +175,6 @@ class Chat3D(nn.Module):
         self.pos_proj = nn.Sequential(
             nn.Linear(self.scene_dim, self.scene_dim)
         )
-        # self.object_layer_norm = nn.LayerNorm(self.input_dim)
-        # self.scene_proj = nn.Sequential(
-        #     nn.Linear(self.llama_dim, self.llama_dim),
-        # )
-        # self.encoder_num_layers = config.model.encoder_num_layers
-        # self.relation_module = CMT(hidden_size=self.llama_dim, num_layers=self.encoder_num_layers)
         self.encoder_layer = nn.TransformerEncoderLayer(d_model=self.scene_dim, nhead=8, dim_feedforward=2048, dropout=0.05, norm_first=True, batch_first=True)
         self.relation_module = nn.TransformerEncoder(self.encoder_layer, num_layers=config.model.encoder_num_layers)
         self.scene_init_proj = nn.Sequential(
@@ -208,10 +193,6 @@ class Chat3D(nn.Module):
                 p.requires_grad = False
             for p in self.scene_proj.parameters():
                 p.requires_grad = False
-
-        if self.stage == 1:
-            for p in self.relation_module.parameters():
-                p.requires_grad = False
             for p in self.pos_proj.parameters():
                 p.requires_grad = False
                 
@@ -222,12 +203,7 @@ class Chat3D(nn.Module):
             self.instruction = "\n".join([x.strip() for x in f.readlines()])
 
         if not self.debug:
-            self.object_norm = torch.norm(self.get_text_emb("object"), p=2)
-            self.relation_norm = torch.norm(self.get_text_emb("relation"), p=2)
-            self.position_norm = torch.norm(self.get_text_emb("position"), p=2)
-            if self.stage != 1:
-                # self.object_list_embed, self.object_list_ind = self.prepare_object_list()
-                self.p_0_embed, self.p_1_embed = self.prepare_fixed_embed()
+            self.p_0_embed, self.p_1_embed = self.prepare_fixed_embed()
         self.last_embed = None
         
         # print_grad_status(self)
@@ -483,7 +459,7 @@ class Chat3D(nn.Module):
 
     def forward(self, **kwargs):
         if "answers" in kwargs:
-            return self.forward_stage2(**kwargs)
+            return self.forward_train(**kwargs)
         if "custom_prompt" in kwargs:
             return self.evaluate(**kwargs)
         return None

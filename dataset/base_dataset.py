@@ -10,7 +10,7 @@ import re
 logger = logging.getLogger(__name__)
 
 
-class PTBaseDataset(Dataset):
+class BaseDataset(Dataset):
 
     def __init__(self):
         self.media_type = "point_cloud"
@@ -49,13 +49,13 @@ class PTBaseDataset(Dataset):
             for _i, _id in enumerate(obj_ids):
                 item_id = '_'.join([scan_id, f'{_id:02}'])
                 if item_id not in self.feats:
-                    scene_feat.append(torch.randn((self.feat_dim)))
-                    # scene_feat.append(torch.zeros(self.feat_dim))
+                    # scene_feat.append(torch.randn((self.feat_dim)))
+                    scene_feat.append(torch.zeros(self.feat_dim))
                 else:
                     scene_feat.append(self.feats[item_id])
-                if item_id not in self.img_feats:
-                    scene_img_feat.append(torch.randn((self.img_feat_dim)))
-                    # scene_img_feat.append(torch.zeros(self.img_feat_dim))
+                if self.img_feats is None or item_id not in self.img_feats:
+                    # scene_img_feat.append(torch.randn((self.img_feat_dim)))
+                    scene_img_feat.append(torch.zeros(self.img_feat_dim))
                 else:
                     scene_img_feat.append(self.img_feats[item_id].float())
                 if scene_feat[-1] is None or any(x in obj_labels[_id] for x in unwanted_words):
@@ -70,7 +70,7 @@ class PTBaseDataset(Dataset):
             scene_masks[scan_id] = scene_mask
         return scene_feats, scene_img_feats, scene_masks
 
-    def get_anno(self, index, stage=2):
+    def get_anno(self, index):
         scene_id = self.anno[index]["scene_id"]
         if self.attributes is not None:
             scene_attr = self.attributes[scene_id]

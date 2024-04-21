@@ -4,36 +4,14 @@ from torchvision import transforms
 from torchvision.transforms import InterpolationMode
 
 from dataset.dataloader import MetaLoader
-from dataset.dataset_stage1 import S1PTDataset
-from dataset.dataset_stage2 import S2PTDataset
-from dataset.dataset_stage3 import S3PTDataset
-from dataset.dataset_val import ValPTDataset
+from dataset.dataset_train import TrainDataset
+from dataset.dataset_val import ValDataset
 
 import logging
 logger = logging.getLogger(__name__)
 
 
 def create_dataset(config):
-    # if config.model.stage == 1:
-    #     config_train_file = config.train_file_s1
-    #     config_val_file = config.val_file_s1
-    #     train_dataset_cls = val_dataset_cls = S1PTDataset
-    # elif config.model.stage == 2:
-    #     config_train_file = config.train_file_s2
-    #     config_val_file = config.val_file_s2
-    #     train_dataset_cls = S2PTDataset
-    #     val_dataset_cls = ValPTDataset
-    # elif config.model.stage == 3:
-    #     config_train_file = config.train_file_s3
-    #     config_val_file = config.val_file_s3
-    #     train_dataset_cls = S3PTDataset
-    #     val_dataset_cls = ValPTDataset
-    # else:
-    #     raise NotImplementedError
-
-    # logger.info(f"train_file: {config_train_file}")
-    # train_dataset_cls = S2PTDataset
-    # val_dataset_cls = ValPTDataset
     if config.evaluate:
         train_datasets = []
     else:
@@ -46,7 +24,7 @@ def create_dataset(config):
         train_datasets = []
         datasets = []
         for train_file in train_files:
-            datasets.append(S2PTDataset(ann_list=train_file))
+            datasets.append(TrainDataset(ann_list=train_file))
         dataset = ConcatDataset(datasets)
         train_datasets.append(dataset)
 
@@ -62,7 +40,7 @@ def create_dataset(config):
         if type(v[0]) != list:
             v = [v]
         for val_file in v:
-            datasets.append(ValPTDataset(ann_list=val_file, dataset_name=k))
+            datasets.append(ValDataset(ann_list=val_file, dataset_name=k))
         dataset = ConcatDataset(datasets)
         val_datasets.append(dataset)
 

@@ -1,3 +1,5 @@
+ID_format = "<OBJ{:03}>"
+
 obj_caption_prompt = [
     "Compose a paragraph detailing the characteristics of the item.",
     "Craft a summary outlining the features of the object.",
@@ -32,4 +34,21 @@ obj_caption_wid_prompt = [
     "Render the appearance of the <id> in words.",
     "Depict the outward form of the <id>.",
     "Elaborate on the visual representation of the <id>."
+]
+
+multi3dref_prompt = [
+    "Is there any object that matches the given description: \"{}\"? If yes, please list the IDs of all the matched objects."
+]
+
+region_caption_prompt = [
+    "Describe the area surrounding {}.",
+    "Provide a description of the locality around {}.",
+    "Characterize the zone centered on {}.",
+    "Depict the surroundings of {}.",
+    "Illustrate the region with {} at its core.",
+    "Give a portrayal of the area focused around {}.",
+    "Offer a depiction of the vicinity of {}.",
+    "Summarize the setting adjacent to {}.",
+    "Explain the environment encircling {}.",
+    "Detail the sector that encompasses {}."
 ]

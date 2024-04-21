@@ -6,35 +6,58 @@ This is an official repo for paper "Chat-3D v2: Bridging 3D Scene and Large Lang
 
 ## News
 
-[2024.01.13] 🔥 Update training guide for grounding on ScanRefer.
+[2024.04] 🔥 A refined implementation of Chat-3D v2 is released. The old version v2.0 has been archived in branch v2_0. This main branch is now for the new version (v2.1).
 
-[2023.12.19] Code release. The main training architecture is based on our former work [Chat-3D](https://github.com/Chat-3D/Chat-3D).
+[2024.01] Update training guide for grounding on ScanRefer.
+
+[2023.12] Code release. The main training architecture is based on our former work [Chat-3D](https://github.com/Chat-3D/Chat-3D).
+
+## v2.1 vs v2.0
+
+- <details>
+  <summary>Performance comparison</summary>
+
+  <small>
+
+  |      	| [ScanRefer]((https://github.com/daveredrum/ScanRefer)) 	|         	| [ScanQA](https://github.com/ATR-DBI/ScanQA) 	|        	|  [Scan2Cap](https://github.com/daveredrum/Scan2Cap) 	|            	| [Multi3dRefer](https://github.com/3dlg-hcvc/M3DRef-CLIP) 	|        	| [SQA3D](https://github.com/SilongYong/SQA3D) 	|
+  |:----:	|:---------:	|:-------:	|:------:	|:------:	|:---------:	|:----------:	|:------------:	|:------:	|:-----:	|
+  |      	|  Acc@0.25 	| Acc@0.5 	|  CIDEr 	| B-4 	| CIDEr@0.5 	| B-4@0.5 	|    F1@0.25   	| F1@0.5 	|   EM  	|
+  | v2.0 	|    35.9   	|   30.4  	|  77.1  	|   7.3  	|    28.1   	|    15.5    	|       -      	|    -   	|   -   	|
+  | **v2.1** 	|   **43.2**    	|  **39.3**   	|  **88.0**  	|  **13.8**  	|   **62.0**    	|    **31.6**    	|     **44.9**     	|  **41.4**  	| **54.4**  	|
+
+  <sub> All results of v2.1 are evaluated on the same model without finetuning on specific tasks.</sub>
+
+  </small>
+
+- <details>
+  <summary>Main changes</summary>
+
+  - LLM backbone: Vicuna v0 -> [Vicuna v1.5](https://github.com/lm-sys/FastChat/blob/main/docs/vicuna_weights_version.md) + LoRA finetuning
+
+  - Training scheme: three-stage training -> one-stage joint training
+
+  - Segmentor: [PointGroup](https://github.com/dvlab-research/PointGroup) -> [Mask3D](https://github.com/JonasSchult/Mask3D)
+  
+  - Code Optimization:
+    - batch size: 1 -> 32
+    - Simpler training and evaluating process
 
 ## 🔨 Preparation
 
 - Prepare the environment:
-
+  
+  (Different from v2.0)
   ```shell
   conda create -n chat-3d-v2 python=3.9.17
   conda activate chat-3d-v2
-  conda install pytorch==1.13.1 torchvision==0.14.1 torchaudio==0.13.1 pytorch-cuda=11.7 -c pytorch -c nvidia
+  conda install pytorch==2.2.1 torchvision==0.17.1 torchaudio==2.2.1 pytorch-cuda=11.8 -c pytorch -c nvidia
   pip install -r requirements.txt
   ```
   
-- Download LLaMA model:
-  - Currently, we choose 
-Vicuna-7B as the LLM in our model, which is finetuned from LLaMA-7B.
-  - Download LLaMA-7B from [hugging face](https://huggingface.co/docs/transformers/main/model_doc/llama).
-  - Download [vicuna-7b-delta-v0](https://huggingface.co/lmsys/vicuna-7b-delta-v0) and process it: (`apply_delta.py` is from [huggingface](https://huggingface.co/CarperAI/stable-vicuna-13b-delta/raw/main/apply_delta.py))
-  
-  ```shell
-  python3 model/apply_delta.py \
-          --base /path/to/model_weights/llama-7b \
-          --target vicuna-7b-v0 \
-          --delta lmsys/vicuna-7b-delta-v0
-  ```
+- Download LLM backbone:
+  -  We use Vicuna-7B v1.5 in our experiments, which can be downloaded from [Hugging Face](https://huggingface.co/lmsys/vicuna-7b-v1.5).
 
-  - Change the `llama_model_path` in [config.py](./scripts/config.py) to the location of `vicuna-7b-v0`.
+  - Change the `llama_model_path` in [config.py](./scripts/config.py) to the location of `vicuna-7b-v1.5`.
   
 
 - Annotations and extracted features:
@@ -44,201 +67,52 @@ Vicuna-7B as the LLM in our model, which is finetuned from LLaMA-7B.
 
 ## 🤖 Training and Inference
 
-  For each training/inference stage, we list the necessary modifications to configs in related files, such as [config.py](scripts/config.py) and [run.sh](scripts/run.sh). Other unmentioned configs are set to their default values.
-
-
 - Training
-  
-  <details>
-  <summary>Training for grounding task on ScanRefer</summary>
-  
-  - Step 1: Object-level Alignment (Attribute-aware Embedding Similarity)
-    - modify [config.py](scripts/config.py):
-      ```python
-      train_file_s1=[
-        [
-          "annotations/scannet_uni3d_feats.pt",
-          "annotations/scannet_train_attributes.pt",
-          "annotations/scanrefer_train_stage1.json"
-        ],
-        [
-          "annotations/scannet_uni3d_feats.pt",
-          "annotations/scannet_train_attributes.pt",
-          "annotations/scannet_train_stage1.json"
-        ]
-      ]
-      val_file_s1=[
-        [
-          "annotations/scannet_uni3d_feats.pt",
-          "annotations/scannet_val_attributes.pt",
-          "annotations/scannet_val_stage1.json"
-        ]
-      ]
-      ```
-    - modify [run.sh](scripts/run.sh):
-      ```python
-      stage=1
-      epoch=6
-      add_scene_token=False
-      evaluate=False
-      pretrained_path=""
-      ```
-    - run: `./scripts/run.sh`
-    - The trained model's checkpoints are saved under `outputs/<step1_exp_name>/`.
-  - Step 2: Object-level Alignment (Object-level Question-Answering)
-    - modify [config.py](scripts/config.py):
-      ```python
-      train_file_s2=[
-        [
-          "annotations/scannet_uni3d_feats.pt",
-          "annotations/scannet_train_attributes.pt",
-          "annotations/obj_align_train.json"
-        ]
-      ]
-      val_file_s2=[
-        [
-          "annotations/scannet_uni3d_feats.pt",
-          "annotations/scannet_val_attributes.pt",
-          "annotations/obj_align_val.json"
-        ]
-      ]
-      ```
-    - modify [run.sh](scripts/run.sh):
-      ```python
-      stage=2
-      epoch=3
-      add_scene_token=False
-      evaluate=False
-      pretrained_path="outputs/<step1_exp_name>/ckpt_05.pth"
-      ```
-    - run: `./scripts/run.sh`
-    - The trained model's checkpoints are saved under `outputs/<step2_exp_name>/`.
-  - Step 3: Scene-level Alignment
-    - modify [config.py](scripts/config.py):
-      ```python
-      train_file_s2=[
-        [
-          "annotations/scannet_uni3d_feats.pt",
-          "annotations/scannet_train_attributes.pt",
-          "annotations/scanrefer_train_stage2_objxx.json"
-        ],
-        [
-          "annotations/scannet_uni3d_feats.pt",
-          "annotations/scannet_train_attributes.pt",
-          "annotations/nr3d_train_stage2_objxx.json"
-        ],
-        [
-          "annotations/scannet_uni3d_feats.pt",
-          "annotations/scannet_train_attributes.pt",
-          "annotations/scene_align_train.json"
-        ]
-      ]
-      val_file_s2=[
-        [
-          "annotations/scannet_uni3d_feats.pt",
-          "annotations/scannet_val_attributes.pt",
-          "annotations/stage2_val400.json"
-        ]
-      ]
-      ```
-    - modify [run.sh](scripts/run.sh):
-      ```python
-      stage=2
-      epoch=3
-      add_scene_token=True
-      evaluate=False
-      pretrained_path="outputs/<step2_exp_name>/ckpt_00.pth"
-      ```
-    - run: `./scripts/run.sh`
-    - The trained model's checkpoints are saved under `outputs/<step3_exp_name>/`.
-  - Step 4: Fine-tuning on Grounding Task
-    - modify [config.py](scripts/config.py):
-      ```python
-      train_file_s2=[
-        [
-          "annotations/scannet_uni3d_feats.pt",
-          "annotations/scannet_train_attributes.pt",
-          "annotations/nr3d_train_stage2_grounding.json"
-        ],
-        [
-          "annotations/scannet_uni3d_feats.pt",
-          "annotations/scannet_train_attributes.pt",
-          "annotations/scanrefer_train_stage2_grounding.json"
-        ],
-        [
-          "annotations/scannet_pointgroup_uni3d_feats.pt",
-          "annotations/scannet_pointgroup_train_attributes.pt",
-          "annotations/scanrefer_pointgroup_train_stage2_grounding.json"
-        ]
-      ]
-      val_file_s2=[
-        [
-          "annotations/scannet_pointgroup_uni3d_feats.pt",
-          "annotations/scannet_pointgroup_val_attributes.pt",
-          "annotations/scanrefer_pointgroup_val_stage2_grounding.json"
-        ]
-      ]
-      ```
-    - modify [run.sh](scripts/run.sh):
-      ```python
-      stage=2
-      epoch=3
-      add_scene_token=True
-      evaluate=False
-      pretrained_path="outputs/<step3_exp_name>/ckpt_01.pth"
-      ```
-    - run: `./scripts/run.sh`
-    - The trained model's checkpoints are saved under `outputs/<step4_exp_name>/`. You can evaluate them following the inference guide.
-    - Simultaneously, the predicted results are already saved as `outputs/<step4_exp_name>/preds_epochX_stepXXXX.json`. You can directly calculate the IoU metrics using `others/calc_scanrefer_grounding_acc.py` (see inference guide)
-  </details>
+  - Modify [run.sh](scripts/run.sh):
+    ```python
+    train_tag="scanrefer#scan2cap#scanqa#sqa3d#multi3dref#nr3d_caption#obj_align"
+    val_tag="scanrefer#scan2cap#scanqa#sqa3d#multi3dref"
+    evaluate=False
+    ```
+
+    <details>
+    <summary> Explanation of "train_tag" and "val_tag" </summary>
+
+    - Use `#` to seperate different datasets
+
+    - Datasets:
+      - `scanrefer`: [ScanRefer](https://github.com/daveredrum/ScanRefer) Dataset
+      - `scan2cap`: [Scan2Cap](https://github.com/daveredrum/Scan2Cap) Dataset
+      - `scanqa`: [ScanQA](https://github.com/ATR-DBI/ScanQA) Dataset
+      - `sqa3d`: [SQA3D](https://github.com/SilongYong/SQA3D) Dataset
+      - `multi3dref`: [Multi3dRefer](https://github.com/3dlg-hcvc/M3DRef-CLIP) Dataset_
+      - `nr3d_caption`: A captioning dataset originated from [Nr3D](https://github.com/referit3d/referit3d).
+      - `obj_align`: A dataset originated from ScanRefer to align the object identifiers with object tokens.
+    
+    - You can try different combination of training datasets or add costumized datasets.
+
+    </details>
+  - Run: `bash scripts/run.sh`
+
+  - Brief training info:
+
+    | Batch Size | GPU | VRAM Usage per GPU | Training Time | ckpt |
+    | :---: | :---: | :---: | :---: | :---: |
+    | 32 | 4 * A100 | ~ 70 GB | ~ 8 hours | [Google Drive](https://drive.google.com/file/d/1hv-N-p9tm6nhoe6tlbZANgxYIjuVvX1n/view?usp=sharing) |
+    | 1 | 1 * A100 | ~ 28 GB | ~ 3 days | - |
+
 
 - Inference
   
-  <details>
-  <summary>Evaluate grounding performance on ScanRefer</summary>
-
-  - modify [config.py](scripts/config.py):
+  - Modify [run.sh](scripts/run.sh): (We provide the pretrained checkpoint in [Google Drive](https://drive.google.com/drive/folders/19wOjXYjca6w3JRVzbbFMgwiQj6kd6MXQ?usp=drive_link))
   
     ```python
-    val_file_s2=[
-      [
-        "annotations/scannet_pointgroup_uni3d_feats.pt",
-        "annotations/scannet_pointgroup_val_attributes.pt",
-        "annotations/scanrefer_pointgroup_val_stage2_grounding.json"
-      ]
-    ]
-    ```
-  
-  - modify [run.sh](scripts/run.sh): (We provide the pretrained checkpoint in [Google Drive](https://drive.google.com/drive/folders/19wOjXYjca6w3JRVzbbFMgwiQj6kd6MXQ?usp=drive_link))
-  
-    ```python
-    stage=2
-    add_scene_token=True
-    evaluate=True
+    val_tag="multi3dref#scanqa#scanrefer#sqa3d#scan2cap"
+    evaluate=False
     pretrained_path="/path/to/pretrained_model.pth"
     ```
   
-  - run evaluate:
-  
-    ```shell
-    ./scripts/run.sh
-    ```
-    
-    The predicted results (raw answers) are saved in `outputs/<exp_name>/preds_epoch-1_step0.json.json`
-    
-  - modify [calc_scanrefer_grounding_acc.py](others/calc_scanrefer_grounding_acc.py):
-    
-    ```python
-    output_file="outputs/<exp_name>/preds_epoch-1_step0.json.json"
-    ```
-  
-  - calculate IoU metrics:
-  
-    ```shell
-    python others/calc_scanrefer_grounding_acc.py
-    ```
-  
-  </details>
+  - Run: `bash scripts/run.sh`
   
 
 ## 📄 Citation
@@ -267,4 +141,30 @@ If you have any questions or suggestions, feel free to drop us an email (`huangh
 
 Thanks to the open source of the following projects:
 
-[VideoChat](https://github.com/OpenGVLab/Ask-Anything/tree/main/video_chat), [LLaMA](https://github.com/facebookresearch/llama), [ULIP](https://github.com/salesforce/ULIP), [ScanRefer](https://github.com/daveredrum/ScanRefer), [ReferIt3D](https://github.com/referit3d/referit3d), [vil3dref](https://github.com/cshizhe/vil3dref), [ScanNet](https://github.com/ScanNet/ScanNet), [Uni3D](https://github.com/baaivision/Uni3D), [PointGroup](https://github.com/dvlab-research/PointGroup)
+LLMs:
+[LLaMA](https://github.com/facebookresearch/llama), 
+[Vicuna](https://github.com/lm-sys/FastChat)
+
+3D Datasets:
+[ScanNet](https://github.com/ScanNet/ScanNet), 
+[ScanRefer](https://github.com/daveredrum/ScanRefer), 
+[ReferIt3D](https://github.com/referit3d/referit3d), 
+[Scan2Cap](https://github.com/daveredrum/Scan2Cap), 
+[ScanQA](https://github.com/ATR-DBI/ScanQA), 
+[SQA3D](https://github.com/SilongYong/SQA3D), 
+[Multi3dRefer](https://github.com/3dlg-hcvc/M3DRef-CLIP)
+
+3D Segmentors:
+[PointGroup](https://github.com/dvlab-research/PointGroup), 
+[Mask3D](https://github.com/JonasSchult/Mask3D)
+
+3D Encoders:
+[ULIP](https://github.com/salesforce/ULIP), 
+[Uni3D](https://github.com/baaivision/Uni3D)
+
+Multi-modal LLMs:
+[VideoChat](https://github.com/OpenGVLab/Ask-Anything/tree/main/video_chat), 
+[LEO](https://github.com/embodied-generalist/embodied-generalist)
+
+3D Expert Models:
+[vil3dref](https://github.com/cshizhe/vil3dref)

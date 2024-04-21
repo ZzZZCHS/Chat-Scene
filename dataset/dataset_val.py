@@ -5,7 +5,7 @@ import json
 import numpy as np
 import torch
 
-from dataset.base_dataset import PTBaseDataset, update_caption
+from dataset.base_dataset import BaseDataset, update_caption
 import glob
 import random
 from prompts.prompts import obj_caption_wid_prompt
@@ -14,14 +14,17 @@ from torch.nn.utils.rnn import pad_sequence
 logger = logging.getLogger(__name__)
 
 
-class ValPTDataset(PTBaseDataset):
+class ValDataset(BaseDataset):
 
     def __init__(self, ann_list, dataset_name, **kwargs):
         super().__init__()
         self.dataset_name = dataset_name
         feat_file, img_feat_file, attribute_file, anno_file = ann_list[:4]
         self.feats = torch.load(feat_file, map_location='cpu')
-        self.img_feats = torch.load(img_feat_file, map_location='cpu') if img_feat_file is not None else None
+        if img_feat_file is not None and os.path.exists(img_feat_file):
+            self.img_feats = torch.load(img_feat_file, map_location='cpu')
+        else:
+            self.img_feats = None
         self.attributes = torch.load(attribute_file, map_location='cpu') if attribute_file is not None else None
         self.anno = json.load(open(anno_file, 'r'))
         if self.attributes is None:
@@ -37,18 +40,22 @@ class ValPTDataset(PTBaseDataset):
         scene_id, scene_feat, scene_img_feat, scene_mask, scene_locs, assigned_ids = self.get_anno(index)
         obj_id = int(self.anno[index].get('obj_id', 0))
         pred_id = int(self.anno[index].get('pred_id', 0))
-        sqa_type = int(self.anno[index].get('sqa_type', 0))
+        type_info = int(self.anno[index].get('sqa_type', 0))
+        if 'sqa_type' in self.anno[index]:
+            type_info = self.anno[index]['sqa_type']
+        elif 'eval_type' in self.anno[index]:
+            type_info = self.anno[index]['eval_type'] 
         if 'prompt' not in self.anno[index]:
             prompt = random.choice(obj_caption_wid_prompt).replace('<id>', f"<OBJ{obj_id:03}>")
         else:
             prompt = self.anno[index]["prompt"]
         ref_captions = self.anno[index]["ref_captions"].copy() if "ref_captions" in self.anno[index] else []
         qid = self.anno[index]["qid"] if "qid" in self.anno[index] else 0
-        return scene_feat, scene_img_feat, scene_mask, scene_locs, obj_id, assigned_ids, prompt, ref_captions, scene_id, qid, pred_id, sqa_type
+        return scene_feat, scene_img_feat, scene_mask, scene_locs, obj_id, assigned_ids, prompt, ref_captions, scene_id, qid, pred_id, type_info
 
 
-def valuate_collate_fn(batch):
-    scene_feats, scene_img_feats, scene_masks, scene_locs, obj_ids, assigned_ids, prompts, ref_captions, scene_ids, qids, pred_ids, sqa_types = zip(*batch)
+def val_collate_fn(batch):
+    scene_feats, scene_img_feats, scene_masks, scene_locs, obj_ids, assigned_ids, prompts, ref_captions, scene_ids, qids, pred_ids, type_infos = zip(*batch)
     batch_scene_feat = pad_sequence(scene_feats, batch_first=True)
     batch_scene_img_feat = pad_sequence(scene_img_feats, batch_first=True)
     batch_scene_mask = pad_sequence(scene_masks, batch_first=True).to(torch.bool)
@@ -56,7 +63,6 @@ def valuate_collate_fn(batch):
     batch_assigned_ids = pad_sequence(assigned_ids, batch_first=True)
     obj_ids = torch.tensor(obj_ids)
     pred_ids = torch.tensor(pred_ids)
-    sqa_types = torch.tensor(sqa_types)
     return {
         "scene_feat": batch_scene_feat,
         "scene_img_feat": batch_scene_img_feat,
@@ -69,7 +75,7 @@ def valuate_collate_fn(batch):
         "scene_id": scene_ids,
         "qid": qids,
         "pred_ids": pred_ids,
-        "sqa_types": sqa_types
+        "type_infos": type_infos
         # "ids": index
     }
 

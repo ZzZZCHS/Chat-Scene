@@ -3,50 +3,53 @@ import json
 import os
 import glob
 import numpy as np
+import argparse
 
-encoder = "mask3d"
+parser = argparse.ArgumentParser()
 
-split = "val"
-version = ""
-scan_dir = f"/mnt/petrelfs/share_data/huanghaifeng/data/processed/scannet/{encoder}_ins_data"
-output_dir = "annotations"
-split_path = f"annotations/scannet/scannetv2_{split}.txt"
+parser.add_argument('--scan_dir', required=True, type=str,
+                    help='the path of the directory to be saved preprocessed scans')
+parser.add_argument('--segmentor', required=True, type=str)
+parser.add_argument('--max_inst_num', required=True, type=int)
+parser.add_argument('--version', type=str, default='')
+args = parser.parse_args()
 
-scan_ids = []
-with open(split_path, "r") as f:
-    for l in f.readlines():
-        scan_ids.append(l[:-1])
 
-scan_ids = sorted(scan_ids)
-# print(scan_ids)
-from tqdm import tqdm
 
-scans = {}
-for scan_id in tqdm(scan_ids):
-    if not os.path.exists(os.path.join(scan_dir, 'instance_id_to_name', '%s.json' % scan_id)):
-        continue
-    inst_labels = json.load(open(os.path.join(scan_dir, 'instance_id_to_name', '%s.json' % scan_id)))
-    inst_locs = np.load(os.path.join(scan_dir, f'instance_id_to_loc{version}', f'{scan_id}.npy'))
-    inst_colors = json.load(open(os.path.join(scan_dir, f'instance_id_to_gmm_color{version}', '%s.json' % scan_id)))
-    inst_colors = [np.concatenate(
-        [np.array(x['weights'])[:, None] if "weights" in x else np.array(x['weight'])[:, None], np.array(x['means'])],
-        axis=1
-    ).astype(np.float32) for x in inst_colors]
-    # inst_colors = np.array(inst_colors).tolist()
-    # inst_colors = list(map(lambda x: x[0][1:], inst_colors))
-    # inst_locs = inst_locs.tolist()
-    assert(len(inst_colors) == len(inst_locs))
-    # print(inst_labels, inst_colors, inst_locs)
-    # exit()
-    inst_locs = torch.tensor(inst_locs, dtype=torch.float32)
-    inst_colors = torch.tensor(inst_colors, dtype=torch.float32)
-    breakpoint()
-    scans[scan_id] = {
-        'objects': inst_labels,  # (n_obj, )
-        'locs': inst_locs,  # (n_obj, 6) center xyz, whl
-        'colors': inst_colors,  # (n_obj, 3x4) cluster * (weight, mean rgb)
-    }
+for split in ["train", "val"]:
+    scan_dir = os.path.join(args.scan_dir, 'pcd_all')
+    output_dir = "annotations"
+    split_path = f"annotations/scannet/scannetv2_{split}.txt"
 
-# with open(os.path.join(output_dir, f"scannet_pointgroup_{split}_attributes.json"), "w") as f:
-#     json.dump(scans, f)
-torch.save(scans, os.path.join(output_dir, f"scannet_{encoder}_{split}_attributes{version}.pt"))
+    scan_ids = [line.strip() for line in open(split_path).readlines()]
+
+    scan_ids = sorted(scan_ids)
+    # print(scan_ids)
+    from tqdm import tqdm
+
+    scans = {}
+    for scan_id in tqdm(scan_ids):
+        pcd_path = os.path.join(scan_dir, f"{scan_id}.pth")
+        if not os.path.exists(pcd_path):
+            print('skip', scan_id)
+            continue
+        points, colors, instance_class_labels, instance_segids = torch.load(pcd_path)
+        inst_locs = []
+        num_insts = len(instance_class_labels)
+        for i in range(min(num_insts, args.max_inst_num)):
+            inst_mask = instance_segids[i]
+            pc = points[inst_mask]
+            if len(pc) < 10:
+                print(scan_id, i, 'empty bbox')
+                inst_locs.append(np.zeros(6, ).astype(np.float32))
+                continue
+            center = pc.mean(0)
+            size = pc.max(0) - pc.min(0)
+            inst_locs.append(np.concatenate([center, size], 0))
+        inst_locs = torch.tensor(np.stack(inst_locs, 0), dtype=torch.float32)
+        scans[scan_id] = {
+            'objects': instance_class_labels,  # (n_obj, )
+            'locs': inst_locs,  # (n_obj, 6) center xyz, whl
+        }
+
+    torch.save(scans, os.path.join(output_dir, f"scannet_{args.segmentor}_{split}_attributes{args.version}.pt"))

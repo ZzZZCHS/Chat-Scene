@@ -10,23 +10,21 @@ import wandb
 from torch.utils.data import ConcatDataset
 
 from dataset import MetaLoader, create_dataset, create_loader, create_sampler
-from dataset.dataset_stage1 import s1_collate_fn
-from dataset.dataset_stage2 import s2_collate_fn
-from dataset.dataset_stage3 import s3_collate_fn
-from dataset.dataset_val import valuate_collate_fn
+from dataset.dataset_train import train_collate_fn
+from dataset.dataset_val import val_collate_fn
 from models.chat3d import Chat3D
 from tasks.shared_utils import get_media_types, setup_model
 from utils.basic_utils import (MetricLogger, SmoothedValue, setup_seed)
 from utils.config_utils import setup_main
 from utils.distributed import get_rank, get_world_size, is_main_process
 from utils.logger import log_dict_to_wandb, setup_wandb
-from utils.eval import calc_scanrefer_score, clean_answer, calc_scan2cap_score, calc_scanqa_score, calc_sqa3d_score
+from utils.eval import calc_scanrefer_score, clean_answer, calc_scan2cap_score, calc_scanqa_score, calc_sqa3d_score, calc_multi3dref_score
 
 from pycocoevalcap.bleu.bleu import Bleu
 from pycocoevalcap.meteor.meteor import Meteor
 from pycocoevalcap.rouge.rouge import Rouge
 from pycocoevalcap.cider.cider import Cider
-from pycocoevalcap.spice.spice import Spice
+# from pycocoevalcap.spice.spice import Spice
 from pycocoevalcap.tokenizer.ptbtokenizer import PTBTokenizer
 
 
@@ -45,7 +43,7 @@ scorers = [
     (Meteor(), "METEOR"),
     (Rouge(), "ROUGE_L"),
     (Cider(), "CIDEr"),
-    (Spice(), "SPICE")
+    # (Spice(), "SPICE")
 ]
 
 max_global_step = 200000000
@@ -211,8 +209,6 @@ def evaluate(
 
     sample_freq = len(val_loader) // 5 + 1
     cosine_scores, l2_distances = [], []
-    preds = []
-    targets = []
     save_preds = []
     logger.info(f"batch-size={val_loader.batch_size} length(#batches)={len(val_loader)}")
     for i, batch in tqdm(enumerate(val_loader)):
@@ -221,20 +217,18 @@ def evaluate(
                 batch[k] = batch[k].to(device)
         with torch.no_grad():
             pred = model(**batch, is_eval=True)
-        if "target_captions" in batch:
-            cosine_scores.append(pred["cosine_score"])
-            l2_distances.append(pred["l2_dis"])
+        # if "target_captions" in batch:
+        #     cosine_scores.append(pred["cosine_score"])
+        #     l2_distances.append(pred["l2_dis"])
 
         if "custom_prompt" in batch:
-            if len(batch["ref_captions"][0]) > 0:
-                target = batch["ref_captions"]
-                prompt = batch["custom_prompt"]
-                tmp_pred = [p.replace("\n", " ").strip() for p in pred]
-                tmp_target = ['\n'.join(p) for p in target]
-                preds += tmp_pred
-                targets += target
-                if i % sample_freq == 0:
-                    logger.info(f"\n[Prompt]\n{prompt[0]}\n[Pred]\n{tmp_pred[0]}\n[Target(s)]\n{tmp_target[0]}")
+            # if len(batch["ref_captions"][0]) > 0:
+            #     target = batch["ref_captions"]
+            #     prompt = batch["custom_prompt"]
+            #     tmp_pred = [p.replace("\n", " ").strip() for p in pred]
+            #     tmp_target = ['\n'.join(p) for p in target]
+            #     if i % sample_freq == 0:
+            #         logger.info(f"\n[Prompt]\n{prompt[0]}\n[Pred]\n{tmp_pred[0]}\n[Target(s)]\n{tmp_target[0]}")
             batch_size = len(pred)
             for bi in range(batch_size):
                 scene_id = batch["scene_id"][bi]
@@ -242,7 +236,7 @@ def evaluate(
                 qid = batch["qid"][bi]
                 prompt = batch["custom_prompt"][bi]
                 pred_id = int(batch['pred_ids'][bi])
-                sqa_type = int(batch['sqa_types'][bi])
+                type_info = batch['type_infos'][bi]
                 tmp_pred = pred[bi]
                 save_preds.append({
                     "scene_id": scene_id,
@@ -252,8 +246,10 @@ def evaluate(
                     "prompt": prompt,
                     "pred": tmp_pred,
                     "ref_captions": batch["ref_captions"][bi],
-                    "sqa_type": sqa_type
+                    "type_info": type_info
                 })
+            # if i % sample_freq == 0:
+            #     print(save_preds[-1])
 
     if len(save_preds) > 0:
         save_preds = sorted(save_preds, key=lambda x: f"{x['scene_id']}_{x['gt_id']:03}_{x['qid']}")
@@ -284,32 +280,35 @@ def evaluate(
             val_scores = calc_scan2cap_score(save_preds, tokenizer, scorers, config)
         elif eval_name == "sqa3d":
             val_scores = calc_sqa3d_score(save_preds, tokenizer, scorers, config)
+        elif eval_name == 'multi3dref':
+            val_scores = calc_multi3dref_score(save_preds, config)
         else:
-            tmp_preds = {}
-            tmp_targets = {}
-            acc = 0
-            print("Total samples:", len(save_preds))
-            for i, output in enumerate(save_preds):
-                item_id = f"{output['scene_id']}_{output['gt_id']}_{output['qid']}_{i}"
-                pred = output["pred"]
-                pred = clean_answer(pred)
-                ref_captions = [clean_answer(caption) for caption in output['ref_captions']]
-                if pred in ref_captions:
-                    acc += 1
-                tmp_preds[item_id] = [{'caption': pred}]
-                ref_captions = [p.replace("\n", " ").strip() for p in ref_captions]
-                tmp_targets[item_id] = [{'caption': caption} for caption in ref_captions]
-            tmp_preds = tokenizer.tokenize(tmp_preds)
-            tmp_targets = tokenizer.tokenize(tmp_targets)
-            acc = acc / len(save_preds)
-            val_scores[f"[{eval_name}] Acc"] = acc
-            for scorer, method in scorers:
-                score, scores = scorer.compute_score(tmp_targets, tmp_preds)
-                if type(method) == list:
-                    for sc, scs, m in zip(score, scores, method):
-                        val_scores[f"[{eval_name}] {m}"] = sc
-                else:
-                    val_scores[f"[{eval_name}] {method}"] = score
+            raise NotImplementedError
+            # tmp_preds = {}
+            # tmp_targets = {}
+            # acc = 0
+            # print("Total samples:", len(save_preds))
+            # for i, output in enumerate(save_preds):
+            #     item_id = f"{output['scene_id']}_{output['gt_id']}_{output['qid']}_{i}"
+            #     pred = output["pred"]
+            #     pred = clean_answer(pred)
+            #     ref_captions = [clean_answer(caption) for caption in output['ref_captions']]
+            #     if pred in ref_captions:
+            #         acc += 1
+            #     tmp_preds[item_id] = [{'caption': pred}]
+            #     ref_captions = [p.replace("\n", " ").strip() for p in ref_captions]
+            #     tmp_targets[item_id] = [{'caption': caption} for caption in ref_captions]
+            # tmp_preds = tokenizer.tokenize(tmp_preds)
+            # tmp_targets = tokenizer.tokenize(tmp_targets)
+            # acc = acc / len(save_preds)
+            # val_scores[f"[{eval_name}] Acc"] = acc
+            # for scorer, method in scorers:
+            #     score, scores = scorer.compute_score(tmp_targets, tmp_preds)
+            #     if type(method) == list:
+            #         for sc, scs, m in zip(score, scores, method):
+            #             val_scores[f"[{eval_name}] {m}"] = sc
+            #     else:
+            #         val_scores[f"[{eval_name}] {method}"] = score
         print(json.dumps(val_scores, indent=4))
     return val_scores
 
@@ -337,7 +336,7 @@ def setup_dataloaders(config):
         batch_size=[config.batch_size] * len(val_datasets),
         num_workers=[config.num_workers] * len(train_datasets),
         is_trains=[True] * len(train_datasets),
-        collate_fns=[s2_collate_fn] * len(train_datasets),
+        collate_fns=[train_collate_fn] * len(train_datasets),
     )
     val_loaders = create_loader(
         val_datasets,
@@ -345,7 +344,7 @@ def setup_dataloaders(config):
         batch_size=[config.batch_size] * len(val_datasets),
         num_workers=[config.num_workers] * len(val_datasets),
         is_trains=[False] * len(val_datasets),
-        collate_fns=[valuate_collate_fn] * len(val_datasets),
+        collate_fns=[val_collate_fn] * len(val_datasets),
     )
 
     return train_loaders, val_loaders

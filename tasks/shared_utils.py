@@ -55,7 +55,7 @@ def setup_model(
         )
     optimizer = create_optimizer(config.optimizer, model, config)
     scheduler = create_scheduler(config.scheduler, optimizer)
-    scaler = torch.cuda.amp.GradScaler(enabled=config.fp16, growth_interval=100)
+    scaler = torch.cuda.amp.GradScaler(enabled=config.optimizer.scaler_enable, growth_interval=100)
 
     start_epoch = 0
     global_step = 0
