@@ -1,9 +1,3 @@
-<style scoped>
-table {
-  font-size: 10px;
-}
-</style>
-
 # Chat-3D v2
 
 This is an official repo for paper "Chat-3D v2: Bridging 3D Scene and Large Language Models with Object Identifiers". 
