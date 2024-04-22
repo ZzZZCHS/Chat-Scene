@@ -81,7 +81,7 @@ This is an official repo for paper "Chat-3D v2: Bridging 3D Scene and Large Lang
       - `scan2cap`: [Scan2Cap](https://github.com/daveredrum/Scan2Cap) Dataset
       - `scanqa`: [ScanQA](https://github.com/ATR-DBI/ScanQA) Dataset
       - `sqa3d`: [SQA3D](https://github.com/SilongYong/SQA3D) Dataset
-      - `multi3dref`: [Multi3dRefer](https://github.com/3dlg-hcvc/M3DRef-CLIP) Dataset_
+      - `multi3dref`: [Multi3dRefer](https://github.com/3dlg-hcvc/M3DRef-CLIP) Dataset
       - `nr3d_caption`: A captioning dataset originated from [Nr3D](https://github.com/referit3d/referit3d).
       - `obj_align`: A dataset originated from ScanRefer to align the object identifiers with object tokens.
     
@@ -100,7 +100,7 @@ This is an official repo for paper "Chat-3D v2: Bridging 3D Scene and Large Lang
 
 - Inference
   
-  - Modify [run.sh](scripts/run.sh): (We provide the pretrained checkpoint in [Google Drive](https://drive.google.com/drive/folders/19wOjXYjca6w3JRVzbbFMgwiQj6kd6MXQ?usp=drive_link))
+  - Modify [run.sh](scripts/run.sh): (We provide the pretrained checkpoint in [Google Drive](https://drive.google.com/file/d/1hv-N-p9tm6nhoe6tlbZANgxYIjuVvX1n/view?usp=sharing))
   
     ```python
     val_tag="scanrefer#scan2cap#scanqa#sqa3d#multi3dref"
