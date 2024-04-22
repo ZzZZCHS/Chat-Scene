@@ -19,7 +19,7 @@ This is an official repo for paper "Chat-3D v2: Bridging 3D Scene and Large Lang
 
   <small>
 
-  |      	| [ScanRefer]((https://github.com/daveredrum/ScanRefer)) 	|         	| [ScanQA](https://github.com/ATR-DBI/ScanQA) 	|        	|  [Scan2Cap](https://github.com/daveredrum/Scan2Cap) 	|            	| [Multi3dRefer](https://github.com/3dlg-hcvc/M3DRef-CLIP) 	|        	| [SQA3D](https://github.com/SilongYong/SQA3D) 	|
+  |      	| [ScanRefer](https://github.com/daveredrum/ScanRefer) 	|         	| [ScanQA](https://github.com/ATR-DBI/ScanQA) 	|        	|  [Scan2Cap](https://github.com/daveredrum/Scan2Cap) 	|            	| [Multi3dRefer](https://github.com/3dlg-hcvc/M3DRef-CLIP) 	|        	| [SQA3D](https://github.com/SilongYong/SQA3D) 	|
   |:----:	|:---------:	|:-------:	|:------:	|:------:	|:---------:	|:----------:	|:------------:	|:------:	|:-----:	|
   |      	|  Acc@0.25 	| Acc@0.5 	|  CIDEr 	| B-4 	| CIDEr@0.5 	| B-4@0.5 	|    F1@0.25   	| F1@0.5 	|   EM  	|
   | v2.0 	|    35.9   	|   30.4  	|  77.1  	|   7.3  	|    28.1   	|    15.5    	|       -      	|    -   	|   -   	|
@@ -108,7 +108,7 @@ This is an official repo for paper "Chat-3D v2: Bridging 3D Scene and Large Lang
   - Modify [run.sh](scripts/run.sh): (We provide the pretrained checkpoint in [Google Drive](https://drive.google.com/drive/folders/19wOjXYjca6w3JRVzbbFMgwiQj6kd6MXQ?usp=drive_link))
   
     ```python
-    val_tag="multi3dref#scanqa#scanrefer#sqa3d#scan2cap"
+    val_tag="scanrefer#scan2cap#scanqa#sqa3d#multi3dref"
     evaluate=False
     pretrained_path="/path/to/pretrained_model.pth"
     ```
