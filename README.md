@@ -1,3 +1,9 @@
+<style scoped>
+table {
+  font-size: 12px;
+}
+</style>
+
 # Chat-3D v2
 
 This is an official repo for paper "Chat-3D v2: Bridging 3D Scene and Large Language Models with Object Identifiers". 
@@ -14,10 +20,7 @@ This is an official repo for paper "Chat-3D v2: Bridging 3D Scene and Large Lang
 
 ## v2.1 vs v2.0
 
-- <details>
-  <summary>Performance comparison</summary>
-
-  <small>
+- Performance comparison
 
   |      	| [ScanRefer](https://github.com/daveredrum/ScanRefer) 	|         	| [ScanQA](https://github.com/ATR-DBI/ScanQA) 	|        	|  [Scan2Cap](https://github.com/daveredrum/Scan2Cap) 	|            	| [Multi3dRefer](https://github.com/3dlg-hcvc/M3DRef-CLIP) 	|        	| [SQA3D](https://github.com/SilongYong/SQA3D) 	|
   |:----:	|:---------:	|:-------:	|:------:	|:------:	|:---------:	|:----------:	|:------------:	|:------:	|:-----:	|
@@ -25,13 +28,11 @@ This is an official repo for paper "Chat-3D v2: Bridging 3D Scene and Large Lang
   | v2.0 	|    35.9   	|   30.4  	|  77.1  	|   7.3  	|    28.1   	|    15.5    	|       -      	|    -   	|   -   	|
   | **v2.1** 	|   **42.5**    	|  **38.4**   	|  **87.6**  	|  **14.0**  	|   **63.9**    	|    **31.8**    	|     **45.1**     	|  **41.6**  	| **54.7**  	|
 
-  </small>
 
   <sub> All results of v2.1 are evaluated on the same model without finetuning on specific tasks.</sub>
 
 
-- <details>
-  <summary>Main changes</summary>
+- Main changes
 
   - LLM backbone: Vicuna v0 -> [Vicuna v1.5](https://github.com/lm-sys/FastChat/blob/main/docs/vicuna_weights_version.md) + LoRA finetuning
 
