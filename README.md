@@ -104,7 +104,7 @@ This is an official repo for paper "Chat-3D v2: Bridging 3D Scene and Large Lang
   
     ```python
     val_tag="scanrefer#scan2cap#scanqa#sqa3d#multi3dref"
-    evaluate=False
+    evaluate=True
     pretrained_path="/path/to/pretrained_model.pth"
     ```
   
