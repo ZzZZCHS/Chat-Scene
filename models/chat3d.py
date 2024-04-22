@@ -63,12 +63,7 @@ class Chat3D(nn.Module):
         self.img_input_dim = config.model.img_input_dim
         self.attr_dim = config.model.attr_dim
         self.scene_dim = config.model.scene_dim
-        self.inter_dim = self.input_dim + self.attr_dim * 2
 
-        # self.pc_start_token, self.pc_end_token = "<Target>", "</Target>"
-        # self.scene_start_token, self.scene_end_token = "<Scene>", "</Scene>"
-
-        # self.llama_tokenizer, self.llama_model = init_llama_model(config)
         self.debug = config.debug
         if not self.debug:
             logger.info('Loading LLAMA')
@@ -115,7 +110,6 @@ class Chat3D(nn.Module):
                             and any([x in name for x in lora_target_modules])
                         ):
                             lora_module_names.add(name)
-                            # print(f"add lora to {name}")
                     return sorted(list(lora_module_names))
             
                 lora_target_modules = find_linear_layers(self.llama_model, config.lora.lora_target_modules)

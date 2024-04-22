@@ -6,7 +6,7 @@ This is an official repo for paper "Chat-3D v2: Bridging 3D Scene and Large Lang
 
 ## News
 
-[2024.04] 🔥 A refined implementation of Chat-3D v2 is released. The old version v2.0 has been archived in branch v2_0. This main branch is now for the new version (v2.1).
+[2024.04] 🔥 A refined implementation of Chat-3D v2 is released. The old version v2.0 has been archived in branch [v2.0](https://github.com/Chat-3D/Chat-3D-v2/tree/v2.0). This main branch is now for the new version (v2.1).
 
 [2024.01] Update training guide for grounding on ScanRefer.
 
@@ -23,7 +23,7 @@ This is an official repo for paper "Chat-3D v2: Bridging 3D Scene and Large Lang
   |:----:	|:---------:	|:-------:	|:------:	|:------:	|:---------:	|:----------:	|:------------:	|:------:	|:-----:	|
   |      	|  Acc@0.25 	| Acc@0.5 	|  CIDEr 	| B-4 	| CIDEr@0.5 	| B-4@0.5 	|    F1@0.25   	| F1@0.5 	|   EM  	|
   | v2.0 	|    35.9   	|   30.4  	|  77.1  	|   7.3  	|    28.1   	|    15.5    	|       -      	|    -   	|   -   	|
-  | **v2.1** 	|   **43.2**    	|  **39.3**   	|  **88.0**  	|  **13.8**  	|   **62.0**    	|    **31.6**    	|     **44.9**     	|  **41.4**  	| **54.4**  	|
+  | **v2.1** 	|   **42.5**    	|  **38.4**   	|  **87.6**  	|  **14.0**  	|   **63.9**    	|    **31.8**    	|     **45.1**     	|  **41.6**  	| **54.7**  	|
 
   <sub> All results of v2.1 are evaluated on the same model without finetuning on specific tasks.</sub>
 

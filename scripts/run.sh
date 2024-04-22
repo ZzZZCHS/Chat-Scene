@@ -6,7 +6,7 @@ export MASTER_PORT=$((53000 + $RANDOM % 10000))
 export MASTER_ADDR=localhost
 
 epoch=3
-batch_size=1
+batch_size=32
 lr=5e-6
 train_emb=True
 train_img_proj=False
@@ -15,11 +15,10 @@ add_scene_token=False
 
 # train_tag="scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#scannet_caption#scannet_region_caption"
 train_tag="scanrefer#scan2cap#scanqa#sqa3d#multi3dref#nr3d_caption#obj_align"
-val_tag="multi3dref#scanqa#scanrefer#sqa3d#scan2cap"
-# val_tag="sqa3d"
+val_tag="scanrefer#scan2cap#scanqa#sqa3d#multi3dref"
 
 evaluate=True
-debug=true
+debug=false
 if [ $debug = "true" ]; then
     enable_wandb=False
     gpu_num=3
@@ -34,7 +33,7 @@ fi
 
 tag="${train_tag}__${val_tag}__${other_info}"
 
-# pretrained_path="/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/20240420_102938_dp0.1_lr5e-6_sta2_ep3_scanrefer_seg#scan2cap_seg#nr3d_caption_seg#obj_align_seg#scanqa_seg#sqa3d_seg#multi3dref_seg__multi3dref#scanqa#scanrefer#sqa3d#scan2cap__v2.1/ckpt_01_3028.pth"
+pretrained_path=""
 
 OUTPUT_DIR=outputs/"$(date +"%Y%m%d_%H%M%S")"_lr"$lr"_ep"$epoch"_"$tag"
 mkdir -p ${OUTPUT_DIR}
