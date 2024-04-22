@@ -1,6 +1,6 @@
 <style scoped>
 table {
-  font-size: 12px;
+  font-size: 10px;
 }
 </style>
 
@@ -18,7 +18,7 @@ This is an official repo for paper "Chat-3D v2: Bridging 3D Scene and Large Lang
 
 [2023.12] Code release. The main training architecture is based on our former work [Chat-3D](https://github.com/Chat-3D/Chat-3D).
 
-## v2.1 vs v2.0
+## 🔥 v2.1 vs v2.0
 
 - Performance comparison
 
