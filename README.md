@@ -25,9 +25,10 @@ This is an official repo for paper "Chat-3D v2: Bridging 3D Scene and Large Lang
   | v2.0 	|    35.9   	|   30.4  	|  77.1  	|   7.3  	|    28.1   	|    15.5    	|       -      	|    -   	|   -   	|
   | **v2.1** 	|   **42.5**    	|  **38.4**   	|  **87.6**  	|  **14.0**  	|   **63.9**    	|    **31.8**    	|     **45.1**     	|  **41.6**  	| **54.7**  	|
 
+  </small>
+
   <sub> All results of v2.1 are evaluated on the same model without finetuning on specific tasks.</sub>
 
-  </small>
 
 - <details>
   <summary>Main changes</summary>
