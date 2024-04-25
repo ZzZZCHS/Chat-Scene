@@ -9,5 +9,6 @@ scipy==1.12.0
 pycocoevalcap==1.2
 sentencepiece==0.2.0
 protobuf==4.25.3
+packaging==24.0
 flash_attn==2.5.6
 mmengine==0.10.3
