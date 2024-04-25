@@ -89,7 +89,7 @@ train_iou_thres = 0.75
 
 region_captions = json.load(open('annotations/step2_captions_by_scene_v2_anchor.json'))
 
-for split in ['val']:
+for split in ['train']:
     scan_list = [x.strip() for x in open(f"annotations/scannet/scannetv2_{split}.txt").readlines()]
     new_annos = []
     instance_attribute_file = f"annotations/scannet_{segmentor}_{split}_attributes{version}.pt"

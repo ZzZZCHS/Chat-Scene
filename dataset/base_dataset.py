@@ -112,40 +112,6 @@ def recover_caption(caption, new_ids):
     return caption
 
 
-def process_batch_data(scene_feats, scene_img_feats, scene_masks, scene_locs):
-    # max_obj_num = max([e.shape[0] for e in scene_feats])
-    # max_obj_num = 110
-    # batch_size = len(scene_feats)
-    batch_scene_feat = pad_sequence(scene_feats, batch_first=True)
-    batch_scene_img_feat = pad_sequence(scene_img_feats, batch_first=True)
-    batch_scene_mask = pad_sequence(scene_masks, batch_first=True)
-    batch_scene_locs = pad_sequence(scene_locs, batch_first=True)
-    # lengths = torch.tensor([len(feat) for feat in scene_feats])
-    # max_obj_num = lengths.max()
-    # batch_scene_mask = (torch.arange(max_obj_num).unsqueeze(0) < lengths.unsqueeze(1)).long()
-    # batch_scene_feat = torch.zeros(batch_size, max_obj_num, scene_feats[0].shape[-1])
-    # batch_scene_locs = torch.zeros(batch_size, max_obj_num, scene_locs[0].shape[-1])
-    # batch_scene_colors = torch.zeros(batch_size, max_obj_num, scene_colors[0].shape[-2], scene_colors[0].shape[-1])
-    # batch_scene_mask = torch.zeros(batch_size, max_obj_num, dtype=torch.long)
-    # for i in range(batch_size):
-    #     batch_scene_feat[i][:scene_feats[i].shape[0]] = scene_feats[i]
-    #     batch_scene_locs[i][:scene_locs[i].shape[0]] = scene_locs[i]
-    #     batch_scene_colors[i][:scene_colors[i].shape[0]] = scene_colors[i]
-    #     batch_scene_mask[i][:scene_feats[i].shape[0]] = 1
-    return batch_scene_feat, batch_scene_img_feat, batch_scene_locs, batch_scene_mask
-
-
-def extract_all_ids(s):
-    id_list = []
-    for tmp in s.split('OBJ')[1:]:
-        j = 0
-        while tmp[:j+1].isdigit() and j < len(tmp):
-            j = j + 1
-        if j > 0:
-            id_list.append(j)
-    return id_list
-
-
 if __name__ == "__main__":
     caption = "<OBJ001> <OBJ002>"
     assigned_ids = [1, 2, 3]

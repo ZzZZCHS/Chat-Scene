@@ -5,7 +5,7 @@ import json
 import numpy as np
 import torch
 
-from dataset.base_dataset import BaseDataset, process_batch_data, update_caption
+from dataset.base_dataset import BaseDataset, update_caption
 import glob
 import random
 from prompts.prompts import obj_caption_wid_prompt

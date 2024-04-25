@@ -10,7 +10,8 @@ version = ""
 # val_attr_file = f"{anno_root}/scannet_val_attributes.pt"
 seg_feat_file = f"{anno_root}/scannet_{segmentor}_{pc_encoder}_feats{version}.pt"
 # seg_img_feat_file = f"{anno_root}/scannet_img_mask3d_dinov2_features{version}.pt"
-seg_img_feat_file = None
+seg_img_feat_file = f"{anno_root}/scannet_mask3d_videofeats{version}.pt"
+# seg_img_feat_file = None
 seg_train_attr_file = f"{anno_root}/scannet_{segmentor}_train_attributes{version}.pt"
 seg_val_attr_file = f"{anno_root}/scannet_{segmentor}_val_attributes{version}.pt"
 
