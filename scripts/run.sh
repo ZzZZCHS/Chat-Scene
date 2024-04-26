@@ -21,7 +21,7 @@ evaluate=True
 debug=false
 if [ $debug = "true" ]; then
     enable_wandb=False
-    gpu_num=3
+    gpu_num=1
     do_save=False
     other_info="debug"
 else
