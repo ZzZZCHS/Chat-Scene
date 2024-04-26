@@ -64,7 +64,7 @@ def train(
     do_eval=True
 ):
     model.train()
-    model.module.llama_model.config.use_cache = False
+    model_without_ddp.llama_model.config.use_cache = False
 
     metric_logger = MetricLogger(delimiter="  ")
     eval_metric_logger = MetricLogger(delimiter="  ")
@@ -130,7 +130,7 @@ def train(
         global_step += 1
 
         if do_eval and ((i+1) % eval_freq == 0 and (len(train_loader) - i >= eval_freq) or i == len(train_loader) - 1):
-            val_metrics = evaluate_all(model, val_loaders, epoch, global_step, device, config)
+            val_metrics = evaluate_all(model, model_without_ddp, val_loaders, epoch, global_step, device, config)
             if is_main_process():
                 for k, v in val_metrics.items():
                     if k not in eval_metric_logger.meters:
@@ -171,6 +171,7 @@ def train(
 
 def evaluate_all(
     model,
+    model_without_ddp,
     val_loaders,
     epoch,
     global_step,
@@ -179,7 +180,7 @@ def evaluate_all(
 ):
     logger.info("Start evaluating...")
     model.eval()
-    model.module.llama_model.config.use_cache = True
+    model_without_ddp.llama_model.config.use_cache = True
     val_scores = {}
     for val_loader in val_loaders:
         new_val_scores = evaluate(model, val_loader, epoch, global_step, device, config)
@@ -430,7 +431,7 @@ def main(config):
             dist.barrier()
 
     if config.evaluate:
-        evaluate_all(model, val_loaders, start_epoch - 1, global_step, device, config)
+        evaluate_all(model, model_without_ddp, val_loaders, start_epoch - 1, global_step, device, config)
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
