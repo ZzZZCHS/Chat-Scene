@@ -431,7 +431,7 @@ def main(config):
             dist.barrier()
 
     if config.evaluate:
-        evaluate_all(model, val_loaders, start_epoch - 1, global_step, device, config)
+        evaluate_all(model, model_without_ddp, val_loaders, start_epoch - 1, global_step, device, config)
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
