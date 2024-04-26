@@ -217,7 +217,6 @@ def evaluate(
             if type(batch[k]) == torch.Tensor:
                 batch[k] = batch[k].to(device)
         with torch.no_grad():
-            breakpoint()
             pred = model(**batch, is_eval=True)
         # if "target_captions" in batch:
         #     cosine_scores.append(pred["cosine_score"])
