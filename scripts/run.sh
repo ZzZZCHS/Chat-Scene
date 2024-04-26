@@ -18,8 +18,8 @@ train_tag="scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#scannet_caption#
 # train_tag="scanrefer#scan2cap#scanqa#sqa3d#multi3dref#nr3d_caption#obj_align"
 val_tag="scanrefer#scan2cap#scanqa#sqa3d#multi3dref"
 
-evaluate=False
-debug=false
+evaluate=True
+debug=true
 if [ $debug = "true" ]; then
     enable_wandb=False
     gpu_num=1
