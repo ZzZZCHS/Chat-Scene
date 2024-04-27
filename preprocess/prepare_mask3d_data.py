@@ -120,10 +120,10 @@ def parse_args():
                         help='the path to the downloaded ScanNet scans')
     parser.add_argument('--output_dir', required=True, type=str,
                         help='the path of the directory to be saved preprocessed scans')
-    parser.add_argument('--inst_seg_dir', required=True, type=str)
     parser.add_argument('--class_label_file', required=True, type=str)
 
     # Optional arguments.
+    parser.add_argument('--inst_seg_dir', default=None, type=str)
     parser.add_argument('--segment_dir', default=None, type=str,
                         help='the path to the predicted masks of pretrained segmentor')
     parser.add_argument('--num_workers', default=-1, type=int,
@@ -158,8 +158,8 @@ def main():
         for line in csvreader:
             id2class[line[0]] = line[2]
     
-    if args.segment_dir is not None:
-        tmp_dir = os.path.join(args.segment_dir, 'tmp')
+    if args.segment_dir:
+        tmp_dir = os.path.join(args.segment_dir, 'mask3d_inst_seg')
         if not os.path.exists(tmp_dir):
             os.mkdir(tmp_dir)
         params = []
