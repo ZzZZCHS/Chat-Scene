@@ -5,7 +5,7 @@ echo "PYTHONPATH: ${PYTHONPATH}"
 export MASTER_PORT=$((53000 + $RANDOM % 10000))
 export MASTER_ADDR=localhost
 
-epoch=3
+epoch=2
 batch_size=32
 lr=5e-6
 train_emb=True
@@ -18,8 +18,8 @@ train_tag="scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#scannet_caption#
 # train_tag="scanrefer#scan2cap#scanqa#sqa3d#multi3dref#nr3d_caption#obj_align"
 val_tag="scanrefer#scan2cap#scanqa#sqa3d#multi3dref"
 
-evaluate=True
-debug=true
+evaluate=False
+debug=false
 if [ $debug = "true" ]; then
     enable_wandb=False
     gpu_num=1
@@ -29,7 +29,7 @@ else
     enable_wandb=True
     gpu_num=4
     do_save=True
-    other_info="pos+video"
+    other_info="obj+pos_video"
 fi
 
 tag="${train_tag}__${val_tag}__${other_info}"

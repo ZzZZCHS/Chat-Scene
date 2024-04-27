@@ -182,7 +182,7 @@ optimizer = dict(
     ),
 )
 
-scheduler = dict(sched="cosine", epochs=3, min_lr_multi=0.01, warmup_epochs=0.1)
+scheduler = dict(sched="cosine", epochs=3, min_lr_multi=0.1, warmup_epochs=0.1)
 
 evaluate = False
 
