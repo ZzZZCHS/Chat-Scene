@@ -98,7 +98,7 @@ def train(
     iterator = metric_logger.log_every(train_loader, log_freq, header)
     for i, (media_type, batch) in enumerate(iterator):
         for k in batch.keys():
-            if type(k) == torch.tensor:
+            if type(batch[k]) == torch.Tensor:
                 batch[k] = batch[k].to(device)
         loss_dict = model(**batch)
         loss = loss_dict["loss"] / accum_iter
@@ -214,7 +214,7 @@ def evaluate(
     logger.info(f"batch-size={val_loader.batch_size} length(#batches)={len(val_loader)}")
     for i, batch in tqdm(enumerate(val_loader)):
         for k in batch.keys():
-            if type(k) == torch.tensor:
+            if type(batch[k]) == torch.Tensor:
                 batch[k] = batch[k].to(device)
         with torch.no_grad():
             pred = model(**batch, is_eval=True)
