@@ -13,7 +13,7 @@
         - Each file under `mask3d_inst_seg` consists of the predicted results of one scene. It records a list of segmented instances with their labels and segmented indices.
 
 - Process data:
-    - If you use pretrained Mask3D to do instance segmentation, please set the `segment_result_dir` in [run_prepare.sh](preprocess/run_prepare.sh) to the output dir of Mask3D.
+    - If you use pretrained Mask3D to do instance segmentation, please set the `segment_result_dir` in [run_prepare.sh](run_prepare.sh) to the output dir of Mask3D.
     - Otherwise, if you directly use the downloaded `mask3d_inst_seg`, please set the `segment_result_dir` to None and set the `inst_seg_dir` to the path to `mask3d_inst_seg`.
     - Run: `bash preprocess/run_prepare.sh`
 
