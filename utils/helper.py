@@ -71,6 +71,8 @@ def clean_answer(data):
 # https://github.com/embodied-generalist/embodied-generalist/blob/477dc44b8b18dbfbe6823c307436d896ec8b062e/evaluator/scanqa_eval.py#L41-L50
 def answer_match(pred, gts):
     # return EM and refined EM
+    if len(pred) == 0:
+        return 0, 0
     if pred in gts:
         return 1, 1
     for gt in gts:

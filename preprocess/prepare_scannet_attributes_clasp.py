@@ -18,7 +18,7 @@ args = parser.parse_args()
 
 
 for split in ["train", "val"]:
-    scan_dir = os.path.join(args.scan_dir, 'pcd_all')
+    scan_dir = args.scan_dir
     output_dir = "annotations"
     split_path = f"annotations/scannet/scannetv2_{split}.txt"
 
@@ -28,28 +28,23 @@ for split in ["train", "val"]:
     # print(scan_ids)
 
     scans = {}
-    for scan_id in tqdm(scan_ids):
+    for scan_id in scan_ids:
         pcd_path = os.path.join(scan_dir, f"{scan_id}.pth")
         if not os.path.exists(pcd_path):
-            print('skip', scan_id)
+            # print('skip', scan_id)
             continue
-        points, colors, instance_class_labels, instance_segids = torch.load(pcd_path)
+        pred_results = torch.load(pcd_path, map_location='cpu')
         inst_locs = []
-        num_insts = len(instance_class_labels)
+        num_insts = pred_results['pred_boxes'].shape[0]
         for i in range(min(num_insts, args.max_inst_num)):
-            inst_mask = instance_segids[i]
-            pc = points[inst_mask]
-            if len(pc) < 10:
-                print(scan_id, i, 'empty bbox')
-                inst_locs.append(np.zeros(6, ).astype(np.float32))
-                continue
-            center = pc.mean(0)
-            size = pc.max(0) - pc.min(0)
-            inst_locs.append(np.concatenate([center, size], 0))
-        inst_locs = torch.tensor(np.stack(inst_locs, 0), dtype=torch.float32)
+            center = pred_results['pred_boxes'].mean(dim=0)
+            size = pred_results['pred_boxes'][1] - pred_results['pred_boxes'][0]
+            inst_locs.append(torch.cat([center, size], 0))
+        inst_locs = torch.stack(inst_locs, dim=0).to(torch.float32)
         scans[scan_id] = {
-            'objects': instance_class_labels,  # (n_obj, )
+            # 'objects': instance_class_labels,  # (n_obj, )
             'locs': inst_locs,  # (n_obj, 6) center xyz, whl
         }
+    print(f"{split}: {len(scans)}")
 
     torch.save(scans, os.path.join(output_dir, f"scannet_{args.segmentor}_{split}_attributes{args.version}.pt"))

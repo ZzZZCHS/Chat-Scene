@@ -5,9 +5,9 @@ echo "PYTHONPATH: ${PYTHONPATH}"
 export MASTER_PORT=$((53000 + $RANDOM % 10000))
 export MASTER_ADDR=localhost
 
-epoch=2
+epoch=3
 batch_size=32
-lr=5e-6
+lr=2e-6
 train_emb=True
 train_img_proj=True
 add_img_token=True
@@ -29,7 +29,7 @@ else
     enable_wandb=True
     gpu_num=4
     do_save=True
-    other_info="obj+pos_video"
+    other_info="obj_video_again"
 fi
 
 tag="${train_tag}__${val_tag}__${other_info}"
