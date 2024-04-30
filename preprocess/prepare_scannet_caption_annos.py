@@ -47,7 +47,7 @@ for split in ['train']:
                 max_iou = iou
                 max_id = pred_id
         if split == 'train':
-            if max_iou > 0.75:
+            if max_iou > 0.5:
                 new_annos.append({
                     'scene_id': scene_id,
                     'obj_id': obj_id,

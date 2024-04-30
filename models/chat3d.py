@@ -158,7 +158,7 @@ class Chat3D(nn.Module):
             nn.Linear(self.llama_dim, self.llama_dim)
         )
         self.object_img_proj = nn.Sequential(
-            nn.Linear(self.input_dim, self.llama_dim),
+            nn.Linear(self.img_input_dim, self.llama_dim),
             nn.GELU(),
             nn.Linear(self.llama_dim, self.llama_dim)
         )

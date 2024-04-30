@@ -24,7 +24,7 @@ def create_dataset(config):
         train_datasets = []
         datasets = []
         for train_file in train_files:
-            datasets.append(TrainDataset(ann_list=train_file))
+            datasets.append(TrainDataset(ann_list=train_file, config=config))
         dataset = ConcatDataset(datasets)
         train_datasets.append(dataset)
 
@@ -40,7 +40,7 @@ def create_dataset(config):
         if type(v[0]) != list:
             v = [v]
         for val_file in v:
-            datasets.append(ValDataset(ann_list=val_file, dataset_name=k))
+            datasets.append(ValDataset(ann_list=val_file, dataset_name=k, config=config))
         dataset = ConcatDataset(datasets)
         val_datasets.append(dataset)
 

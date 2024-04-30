@@ -17,8 +17,10 @@ logger = logging.getLogger(__name__)
 
 class TrainDataset(BaseDataset):
 
-    def __init__(self, ann_list, **kwargs):
+    def __init__(self, ann_list, config, **kwargs):
         super().__init__()
+        self.feat_dim = config.model.input_dim
+        self.img_feat_dim = config.model.img_input_dim
         feat_file, img_feat_file, attribute_file, anno_file = ann_list[:4]
         self.feats = torch.load(feat_file, map_location='cpu')
         if img_feat_file is not None and os.path.exists(img_feat_file):

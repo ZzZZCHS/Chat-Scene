@@ -7,14 +7,16 @@ export MASTER_ADDR=localhost
 
 epoch=3
 batch_size=32
-lr=2e-6
+lr=5e-6
 train_emb=True
-train_img_proj=True
-add_img_token=True
+train_img_proj=False
+add_img_token=False
 add_scene_token=False
 no_obj=False
+input_dim=128 # 1024
 
-train_tag="scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#scannet_caption#scannet_region_caption#nr3d_caption"
+# train_tag="scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#scannet_caption#scannet_region_caption#nr3d_caption"
+train_tag="scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#nr3d_caption"
 # train_tag="scanrefer#scan2cap#scanqa#sqa3d#multi3dref#nr3d_caption#obj_align"
 val_tag="scanrefer#scan2cap#scanqa#sqa3d#multi3dref"
 
@@ -27,9 +29,9 @@ if [ $debug = "true" ]; then
     other_info="debug"
 else
     enable_wandb=True
-    gpu_num=4
+    gpu_num=2
     do_save=True
-    other_info="obj_video_again"
+    other_info="clasp"
 fi
 
 tag="${train_tag}__${val_tag}__${other_info}"
@@ -57,4 +59,7 @@ python tasks/train.py \
     model.train_img_proj "$train_img_proj" \
     train_tag "$train_tag" \
     val_tag "$val_tag" \
-    model.no_obj "$no_obj"
+    model.no_obj "$no_obj" \
+    segmentor "$segmentor" \
+    pc_encoder "$pc_encoder" \
+    model.input_dim "$input_dim"

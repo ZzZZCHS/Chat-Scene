@@ -14,12 +14,13 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--segmentor', required=True, type=str)
 parser.add_argument('--version', type=str, default='')
+parser.add_argument('--train_iou_thres', type=float, default=0.75)
 args = parser.parse_args()
 
 segmentor = args.segmentor
 version = args.version
 
-for split in ["train", "val"]:
+for split in ["val"]:
     count = [0] * 100
     annos = json.load(open(f"annotations/scanrefer_{split}_grounding.json", "r"))
     new_annos = []
@@ -30,7 +31,8 @@ for split in ["train", "val"]:
     instance_attrs = torch.load(instance_attribute_file)
     scannet_attrs = torch.load(scannet_attribute_file)
 
-
+    iou25_count = 0
+    iou50_count = 0
     for i, anno in tqdm(enumerate(annos)):
         scene_id = anno["scene_id"]
         obj_id = anno["obj_id"]
@@ -42,16 +44,22 @@ for split in ["train", "val"]:
         max_iou, max_id = -1, -1
         for pred_id in range(instance_num):
             pred_locs = instance_locs[pred_id].tolist()
-            gt_locs = scannet_locs[obj_id].tolist()
+            gt_locs = scannet_locs[obj_id*6:obj_id*6+6].tolist()
             pred_corners = construct_bbox_corners(pred_locs[:3], pred_locs[3:])
             gt_corners = construct_bbox_corners(gt_locs[:3], gt_locs[3:])
             iou = box3d_iou(pred_corners, gt_corners)
             if iou > max_iou:
                 max_iou = iou
                 max_id = pred_id
+        # print(max_iou, max_id)
+        # breakpoint()
+        if max_iou >= 0.25:
+            iou25_count += 1
+        if max_iou >= 0.5:
+            iou50_count += 1
         count[max_id] += 1
         if split == "train":
-            if max_iou > 0.75:
+            if max_iou >= args.train_iou_thres:
                 new_annos.append({
                     "scene_id": scene_id,
                     "obj_id": max_id,
@@ -68,6 +76,8 @@ for split in ["train", "val"]:
 
     print(len(new_annos))
     print(count)
+    print(f"max iou@0.25: {iou25_count / len(new_annos)}")
+    print(f"max iou@0.5: {iou50_count / len(new_annos)}")
 
-    with open(f"annotations/scanrefer_{segmentor}_{split}_grounding{version}.json", "w") as f:
-        json.dump(new_annos, f, indent=4)
+    # with open(f"annotations/scanrefer_{segmentor}_{split}_grounding{version}.json", "w") as f:
+    #     json.dump(new_annos, f, indent=4)

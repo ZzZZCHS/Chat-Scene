@@ -1,55 +1,78 @@
-import torch
-import json
-import os
-import glob
+from plyfile import PlyData
 import numpy as np
-import argparse
+import os
+import json
+import torch
+from collections import defaultdict
 from tqdm import tqdm
+import mmengine
+import argparse
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--scan_dir', required=True, type=str,
-                    help='the path of the directory to be saved preprocessed scans')
-parser.add_argument('--segmentor', required=True, type=str)
-parser.add_argument('--max_inst_num', required=True, type=int)
-parser.add_argument('--version', type=str, default='')
+parser.add_argument('--scannet_dir', required=True, type=str,
+                    help='the path of the directory to scannet scans')
 args = parser.parse_args()
 
+raw_data_dir = os.path.join(args.scannet_dir, 'scans')
 
 
 for split in ["train", "val"]:
-    scan_dir = os.path.join(args.scan_dir, 'pcd_all')
-    output_dir = "annotations"
-    split_path = f"annotations/scannet/scannetv2_{split}.txt"
+    split_file = f"annotations/scannet/scannetv2_{split}.txt"
+    scan_names = [line.rstrip() for line in open(split_file)]
+    print(f'{split} split scans: {len(scan_names)}')
+    outputs = {}
+    for scan_id in tqdm(scan_names):
+        aggregation_path = os.path.join(raw_data_dir, scan_id, scan_id + '.aggregation.json')
+        segs_path = os.path.join(raw_data_dir, scan_id, scan_id + '_vh_clean_2.0.010000.segs.json')
+        scan_ply_path = os.path.join(raw_data_dir, scan_id, scan_id + '_vh_clean_2.labels.ply')
 
-    scan_ids = [line.strip() for line in open(split_path).readlines()]
+        data = PlyData.read(scan_ply_path)
+        x = np.asarray(data.elements[0].data['x']).astype(np.float32)
+        y = np.asarray(data.elements[0].data['y']).astype(np.float32)
+        z = np.asarray(data.elements[0].data['z']).astype(np.float32)
+        pc = np.stack([x, y, z], axis=1)
 
-    scan_ids = sorted(scan_ids)
-    # print(scan_ids)
+        align_matrix = np.eye(4)
+        with open(os.path.join(raw_data_dir, scan_id, '%s.txt'%(scan_id)), 'r') as f:
+            for line in f:
+                if line.startswith('axisAlignment'):
+                    align_matrix = np.array([float(x) for x in line.strip().split()[-16:]]).astype(np.float32).reshape(4, 4)
+                    break
 
-    scans = {}
-    for scan_id in tqdm(scan_ids):
-        pcd_path = os.path.join(scan_dir, f"{scan_id}.pth")
-        if not os.path.exists(pcd_path):
-            print('skip', scan_id)
-            continue
-        points, colors, instance_class_labels, instance_segids = torch.load(pcd_path)
+        pts = np.ones((pc.shape[0], 4), dtype=pc.dtype)
+        pts[:, 0:3] = pc
+        pc = np.dot(pts, align_matrix.transpose())[:, :3]
+
+        scan_aggregation = json.load(open(aggregation_path))
+        segments_info = json.load(open(segs_path))
+        segment_indices = segments_info["segIndices"]
+        segment_indices_dict = defaultdict(list)
+        for i, s in enumerate(segment_indices):
+            segment_indices_dict[s].append(i)
+        
+        pc_segment_label = [''] * pc.shape[0]
+
+        instance_labels = []
         inst_locs = []
-        num_insts = len(instance_class_labels)
-        for i in range(min(num_insts, args.max_inst_num)):
-            inst_mask = instance_segids[i]
-            pc = points[inst_mask]
-            if len(pc) < 10:
-                print(scan_id, i, 'empty bbox')
-                inst_locs.append(np.zeros(6, ).astype(np.float32))
-                continue
-            center = pc.mean(0)
-            size = pc.max(0) - pc.min(0)
-            inst_locs.append(np.concatenate([center, size], 0))
-        inst_locs = torch.tensor(np.stack(inst_locs, 0), dtype=torch.float32)
-        scans[scan_id] = {
-            'objects': instance_class_labels,  # (n_obj, )
-            'locs': inst_locs,  # (n_obj, 6) center xyz, whl
+        for idx, object_info in enumerate(scan_aggregation['segGroups']):
+            object_instance_label = object_info['label']
+            object_id = object_info['objectId']
+            segments = object_info["segments"]
+            pc_ids = []
+            for s in segments:
+                pc_ids.extend(segment_indices_dict[s])
+            object_pc = pc[pc_ids]
+            object_center = (np.max(object_pc, axis=0) + np.min(object_pc, axis=0)) / 2.0
+            object_size = np.max(object_pc, axis=0) - np.min(object_pc, axis=0)
+            object_bbox = torch.from_numpy(np.concatenate([object_center, object_size], axis=0))
+            inst_locs.append(object_bbox)
+            instance_labels.append(object_instance_label)
+        inst_locs = torch.stack(inst_locs, dim=0)
+        outputs[scan_id] = {
+            'objects': instance_labels,
+            'locs': inst_locs
         }
+    
+    torch.save(outputs, f"annotations/scannet_{split}_attributes.pt")
 
-    torch.save(scans, os.path.join(output_dir, f"scannet_{args.segmentor}_{split}_attributes{args.version}.pt"))

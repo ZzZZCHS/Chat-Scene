@@ -145,11 +145,7 @@ def main():
     args = parse_args()
     os.makedirs(args.output_dir, exist_ok=True)
 
-    if args.num_workers == -1:
-        num_workers = min(mp.cpu_count(), len(scan_ids))
-    else:
-        num_workers = args.num_workers
-    print('num workers:', num_workers)
+    num_workers = args.num_workers
 
     id2class = {}
     with open(args.class_label_file, "r") as f:

@@ -16,14 +16,12 @@ parser.add_argument('--segmentor', required=True, type=str)
 parser.add_argument('--version', type=str, default='')
 args = parser.parse_args()
 
-
 segmentor = args.segmentor
 version = args.version
 
-templates = [line.rstrip() for line in open('prompts/nr3d_caption_templates.txt')]
-
-for split in ["train", "val"]:
-    annos = json.load(open(f"annotations/nr3d_{split}_stage2_objxx.json"))
+for split in ["val"]:
+    count = [0] * 100
+    annos = json.load(open(f"annotations/scanrefer_{split}_grounding.json", "r"))
     new_annos = []
 
     instance_attribute_file = f"annotations/scannet_{segmentor}_{split}_attributes{version}.pt"
@@ -32,13 +30,14 @@ for split in ["train", "val"]:
     instance_attrs = torch.load(instance_attribute_file)
     scannet_attrs = torch.load(scannet_attribute_file)
 
-    for anno in tqdm(annos):
-        scene_id = anno['scene_id']
-        obj_id = anno['obj_id']
-        if scene_id not in instance_attrs:
-            continue
-        instance_locs = instance_attrs[scene_id]['locs']
-        scannet_locs = scannet_attrs[scene_id]['locs']
+    iou25_count = 0
+    iou50_count = 0
+    scene_id = "scene0011_00"
+    
+    instance_locs = instance_attrs[scene_id]["locs"]
+    scannet_locs = scannet_attrs[scene_id]["locs"]
+    breakpoint()
+    for obj_id in range(scannet_locs.shape[0]):
         max_iou, max_id = -1, -1
         for pred_id in range(instance_locs.shape[0]):
             pred_locs = instance_locs[pred_id].tolist()
@@ -49,22 +48,21 @@ for split in ["train", "val"]:
             if iou > max_iou:
                 max_iou = iou
                 max_id = pred_id
-        prompt = random.choice(templates).replace('<id>', f"<OBJ{max_id:03}>")
-        if split == 'train':
-            if max_iou > 0.5:
-                new_annos.append({
-                    'scene_id': scene_id,
-                    'obj_id': obj_id,
-                    'prompt': prompt,
-                    'caption': anno['caption']
-                })
-        else:
-            new_annos.append({
-                'scene_id': scene_id,
-                'obj_id': obj_id,
-                'prompt': prompt,
-                'ref_captions': anno['ref_captions']
-            })
-    print(len(new_annos))
-    with open(f"annotations/nr3d_{segmentor}_{split}_caption{version}.json", 'w') as f:
-        json.dump(new_annos, f, indent=4)
+            # if iou > 0.1:
+            #     breakpoint()
+    # print(max_iou, max_id)
+    # breakpoint()
+        if max_iou >= 0.25:
+            iou25_count += 1
+        if max_iou >= 0.5:
+            iou50_count += 1
+        count[max_id] += 1
+
+    print(instance_locs.shape[0], scannet_locs.shape[0])
+    print(count)
+    print(iou25_count, iou50_count)
+    # print(f"max iou@0.25: {iou25_count / len(new_annos)}")
+    # print(f"max iou@0.5: {iou50_count / len(new_annos)}")
+
+    # with open(f"annotations/scanrefer_{segmentor}_{split}_grounding{version}.json", "w") as f:
+    #     json.dump(new_annos, f, indent=4)

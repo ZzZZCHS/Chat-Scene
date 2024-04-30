@@ -54,7 +54,7 @@ for split in ["train", "val"]:
             prompt = f"What is the <OBJ{max_id:03}>?"
             caption = f"<OBJ{max_id:03}> is a {class_label}."
             if split == 'train':
-                if max_iou > 0.75:
+                if max_iou > 0.5:
                     new_annos.append({
                         'scene_id': scene_id,
                         'obj_id': obj_id,

@@ -85,7 +85,7 @@ args = parser.parse_args()
 
 segmentor = args.segmentor
 version = args.version
-train_iou_thres = 0.75
+train_iou_thres = 0.5
 
 region_captions = json.load(open('annotations/step2_captions_by_scene_v2_anchor.json'))
 

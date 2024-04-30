@@ -14,6 +14,7 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--segmentor', required=True, type=str)
 parser.add_argument('--version', type=str, default='')
+parser.add_argument('--train_iou_thres', type=float, default=0.75)
 args = parser.parse_args()
 
 
@@ -75,7 +76,7 @@ for split in ["train", "val"]:
                 count_all += len(corpus[f"{scene_id}|{gt_id}"])
             if pred_id == -1:
                 continue
-            if split == 'train' and gt_match_iou[gt_id] < 0.75:
+            if split == 'train' and gt_match_iou[gt_id] < args.train_iou_thres:
                 continue
             if gt_match_iou[gt_id] >= 0.25:
                 covered25_num += len(corpus[f"{scene_id}|{gt_id}"])

@@ -1,7 +1,7 @@
 # ========================= data ==========================
 anno_root = "annotations"  # annotation dir
-pc_encoder = "uni3d"
-segmentor = "mask3d"
+pc_encoder = "clasp" # uni3d
+segmentor = "clasp" # mask3d
 version = ""
 
 # feat_file = f"{anno_root}/scannet_{pc_encoder}_feats.pt"
@@ -129,7 +129,7 @@ batch_size = 32
 # ========================= model ==========================
 model = dict(
     llama_model_path="llm/vicuna-7b-v1.5",
-    input_dim=1024 if pc_encoder == "uni3d" else 512,
+    input_dim=1024,
     img_input_dim=1024,
     attr_dim=512,
     scene_dim=256,

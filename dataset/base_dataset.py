@@ -42,7 +42,7 @@ class BaseDataset(Dataset):
             scene_attr = self.attributes[scan_id]
             obj_num = scene_attr['locs'].shape[0]
             obj_ids = scene_attr['obj_ids'] if 'obj_ids' in scene_attr else [_ for _ in range(obj_num)]
-            obj_labels = scene_attr['objects']
+            obj_labels = scene_attr['objects'] if 'objects' in scene_attr else [''] * obj_num
             scene_feat = []
             scene_img_feat = []
             scene_mask = []
