@@ -81,11 +81,11 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--segmentor', required=True, type=str)
 parser.add_argument('--version', type=str, default='')
+parser.add_argument('--train_iou_thres', type=float, default=0.75)
 args = parser.parse_args()
 
 segmentor = args.segmentor
 version = args.version
-train_iou_thres = 0.5
 
 region_captions = json.load(open('annotations/step2_captions_by_scene_v2_anchor.json'))
 
@@ -108,7 +108,7 @@ for split in ['train']:
             if anchor_id >= scannet_locs.shape[0]:
                 continue
             pred_anchor_id, pred_anchor_iou = find_match_in_pred(anchor_id, instance_locs, scannet_locs)
-            if pred_anchor_iou < train_iou_thres:
+            if pred_anchor_iou < args.train_iou_thres:
                 continue
             positive = region['positive']
             new_positive = {}
@@ -118,7 +118,7 @@ for split in ['train']:
                     flag = 0
                     break
                 new_k, new_iou = find_match_in_pred(int(k), instance_locs, scannet_locs)
-                if new_iou < train_iou_thres:
+                if new_iou < args.train_iou_thres:
                     flag = 0
                     break
                 new_positive[new_k] = v

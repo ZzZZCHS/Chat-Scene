@@ -249,7 +249,6 @@ def align_mesh(scene_id):
     # align
     pts = np.ones((vertices.shape[0], 4))
     pts[:, :3] = vertices[:, :3]
-    breakpoint()
     pts = np.dot(pts, axis_align_matrix.T)
     vertices[:, :3] = pts[:, :3]
 

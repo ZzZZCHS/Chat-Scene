@@ -14,6 +14,7 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--segmentor', required=True, type=str)
 parser.add_argument('--version', type=str, default='')
+parser.add_argument('--train_iou_thres', type=float, default=0.75)
 args = parser.parse_args()
 
 
@@ -51,7 +52,7 @@ for split in ["train", "val"]:
                 max_id = pred_id
         prompt = random.choice(templates).replace('<id>', f"<OBJ{max_id:03}>")
         if split == 'train':
-            if max_iou > 0.5:
+            if max_iou >= args.train_iou_thres:
                 new_annos.append({
                     'scene_id': scene_id,
                     'obj_id': obj_id,

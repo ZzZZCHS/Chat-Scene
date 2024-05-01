@@ -20,7 +20,7 @@ args = parser.parse_args()
 segmentor = args.segmentor
 version = args.version
 
-for split in ["val"]:
+for split in ["train", "val"]:
     count = [0] * 100
     annos = json.load(open(f"annotations/scanrefer_{split}_grounding.json", "r"))
     new_annos = []
@@ -44,7 +44,7 @@ for split in ["val"]:
         max_iou, max_id = -1, -1
         for pred_id in range(instance_num):
             pred_locs = instance_locs[pred_id].tolist()
-            gt_locs = scannet_locs[obj_id*6:obj_id*6+6].tolist()
+            gt_locs = scannet_locs[obj_id].tolist()
             pred_corners = construct_bbox_corners(pred_locs[:3], pred_locs[3:])
             gt_corners = construct_bbox_corners(gt_locs[:3], gt_locs[3:])
             iou = box3d_iou(pred_corners, gt_corners)
@@ -76,8 +76,8 @@ for split in ["val"]:
 
     print(len(new_annos))
     print(count)
-    print(f"max iou@0.25: {iou25_count / len(new_annos)}")
-    print(f"max iou@0.5: {iou50_count / len(new_annos)}")
+    # print(f"max iou@0.25: {iou25_count / len(new_annos)}")
+    # print(f"max iou@0.5: {iou50_count / len(new_annos)}")
 
     # with open(f"annotations/scanrefer_{segmentor}_{split}_grounding{version}.json", "w") as f:
     #     json.dump(new_annos, f, indent=4)
