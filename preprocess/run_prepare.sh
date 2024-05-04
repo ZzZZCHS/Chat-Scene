@@ -7,10 +7,10 @@ inst_seg_dir=""
 class_label_file="annotations/scannet/scannetv2-labels.combined.tsv"
 train_iou_thres=0.75
 
-# processed_data_dir="/mnt/petrelfs/share_data/huanghaifeng/data/processed/scannet/mask3d_ins_data${version}"
-# segmentor="mask3d"
-processed_data_dir="/mnt/petrelfs/share_data/chenyilun/share/mask3d/proposals"
-segmentor="clasp"
+processed_data_dir="/mnt/petrelfs/share_data/huanghaifeng/data/processed/scannet/mask3d_ins_data${version}"
+segmentor="mask3d"
+# processed_data_dir="/mnt/petrelfs/share_data/chenyilun/share/mask3d/proposals"
+# segmentor="clasp"
 
 # python preprocess/prepare_mask3d_data.py \
 #     --scannet_dir "$scannet_dir" \
@@ -41,10 +41,10 @@ segmentor="clasp"
 #     --version "$version" \
 #     --train_iou_thres "$train_iou_thres"
 
-# python preprocess/prepare_scan2cap_annos.py \
-#     --segmentor "$segmentor" \
-#     --version "$version" \
-#     --train_iou_thres "$train_iou_thres"
+python preprocess/prepare_scan2cap_annos.py \
+    --segmentor "$segmentor" \
+    --version "$version" \
+    --train_iou_thres "$train_iou_thres"
 
 # python preprocess/prepare_objalign_annos.py \
 #     --segmentor "$segmentor" \
@@ -56,10 +56,10 @@ segmentor="clasp"
 #     --version "$version" \
 #     --train_iou_thres "$train_iou_thres"
 
-python preprocess/prepare_multi3dref_annos.py \
-    --segmentor "$segmentor" \
-    --version "$version" \
-    --train_iou_thres "$train_iou_thres"
+# python preprocess/prepare_multi3dref_annos.py \
+#     --segmentor "$segmentor" \
+#     --version "$version" \
+#     --train_iou_thres "$train_iou_thres"
 
 # python preprocess/prepare_scannet_caption_annos.py \
 #     --segmentor "$segmentor" \

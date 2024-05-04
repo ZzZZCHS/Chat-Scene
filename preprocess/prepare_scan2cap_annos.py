@@ -8,6 +8,7 @@ from tqdm import tqdm
 from collections import defaultdict
 import argparse
 from utils.box_utils import get_box3d_min_max, box3d_iou, construct_bbox_corners
+from prompts.prompts import scan2cap_prompt
 
 
 parser = argparse.ArgumentParser()
@@ -21,18 +22,14 @@ args = parser.parse_args()
 for split in ["train", "val"]:
     segmentor = args.segmentor
     version = args.version
-    thr = 0.
-    annos = json.load(open(f"annotations/scanrefer_{split}_stage2_objxx.json", "r"))
+    annos = json.load(open(f"annotations/scanrefer/ScanRefer_filtered_{split}.json", "r"))
     new_annos = []
 
     print(len(annos))
     corpus = defaultdict(list)
     for anno in annos:
-        gt_key = f"{anno['scene_id']}|{anno['obj_id']}"
-        if split == "train":
-            corpus[gt_key].append(anno['caption'])
-        else:
-            corpus[gt_key] = anno['ref_captions']
+        gt_key = f"{anno['scene_id']}|{anno['object_id']}"
+        corpus[gt_key].append(anno['description'])
 
     count = [0] * 100
     instance_attribute_file = f"annotations/scannet_{segmentor}_{split}_attributes{version}.pt"
@@ -40,10 +37,6 @@ for split in ["train", "val"]:
 
     instance_attrs = torch.load(instance_attribute_file)
     scannet_attrs = torch.load(scannet_attribute_file)
-
-    prompt_templates = []
-    with open('prompts/scanrefer_caption_templates.txt') as f:
-        prompt_templates = [p.strip() for p in f.readlines()]
 
 
     covered25_num, covered50_num = 0, 0
@@ -89,7 +82,7 @@ for split in ["train", "val"]:
                         'scene_id': scene_id,
                         'obj_id': gt_id,
                         'pred_id': pred_id,
-                        'prompt': random.choice(prompt_templates).replace(f"<id>", f"<OBJ{pred_id:03}>"),
+                        'prompt': random.choice(scan2cap_prompt).replace(f"<id>", f"<OBJ{pred_id:03}>"),
                         "caption": caption,
                         "iou": gt_match_iou[gt_id]
                     })
@@ -98,7 +91,7 @@ for split in ["train", "val"]:
                     'scene_id': scene_id,
                     'obj_id': gt_id,
                     'pred_id': pred_id,
-                    'prompt': random.choice(prompt_templates).replace(f"<id>", f"<OBJ{pred_id:03}>"),
+                    'prompt': random.choice(scan2cap_prompt).replace(f"<id>", f"<OBJ{pred_id:03}>"),
                     "ref_captions": corpus[f"{scene_id}|{gt_id}"],
                     "iou": gt_match_iou[gt_id]
                 })
@@ -108,5 +101,5 @@ for split in ["train", "val"]:
     print(count_all)
     # print(count)
 
-    with open(f"annotations/scanrefer_{segmentor}_{split}_caption{version}.json", "w") as f:
+    with open(f"annotations/scan2cap_{segmentor}_{split}{version}.json", "w") as f:
         json.dump(new_annos, f, indent=4)
