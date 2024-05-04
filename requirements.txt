@@ -13,3 +13,4 @@ packaging==24.0
 flash_attn==2.5.6
 mmengine==0.10.3
 wandb==0.16.5
+nltk==3.8.1
