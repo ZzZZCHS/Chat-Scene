@@ -1,7 +1,7 @@
 # ========================= data ==========================
 anno_root = "annotations"  # annotation dir
-pc_encoder = "clasp" # uni3d
-segmentor = "clasp" # mask3d
+pc_encoder = "uni3d" # uni3d, clasp
+segmentor = "mask3d" # mask3d, clasp
 version = ""
 
 # feat_file = f"{anno_root}/scannet_{pc_encoder}_feats.pt"

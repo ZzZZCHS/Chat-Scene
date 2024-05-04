@@ -13,7 +13,7 @@ from collections import defaultdict
 parser = argparse.ArgumentParser()
 parser.add_argument('--segmentor', required=True, type=str)
 parser.add_argument('--version', type=str, default='')
-parser.add_argument('--train_iou_thres', type=str, default=0.75)
+parser.add_argument('--train_iou_thres', type=float, default=0.75)
 args = parser.parse_args()
 
 segmentor = args.segmentor

@@ -258,7 +258,7 @@ def align_mesh(scene_id):
 
 
 if __name__ == "__main__":
-    scene_id = "scene0011_00"
+    scene_id = "scene0000_00"
     output_scene_dir = f"vis/{scene_id}"
     os.makedirs(output_scene_dir, exist_ok=True)
 
@@ -266,7 +266,7 @@ if __name__ == "__main__":
     mesh.write(os.path.join(output_scene_dir, 'scene.ply'))
 
     gt_attrs = torch.load('annotations/scannet_train_attributes.pt')
-    segmented_attrs = torch.load('annotations/scannet_clasp_train_attributes.pt')
+    segmented_attrs = torch.load('annotations/scannet_deva_attributes.pt')
 
     gt_ids = range(len(gt_attrs[scene_id]['locs']))
     for gt_id in gt_ids:
@@ -276,4 +276,4 @@ if __name__ == "__main__":
     pred_ids = range(len(segmented_attrs[scene_id]['locs']))
     for pred_id in pred_ids:
         pred_bbox = list(segmented_attrs[scene_id]['locs'][pred_id])
-        write_bbox(pred_bbox + [0.], 1, os.path.join(output_scene_dir, f"clasp_{pred_id}.ply"))
+        write_bbox(pred_bbox + [0.], 1, os.path.join(output_scene_dir, f"deva_{pred_id}.ply"))

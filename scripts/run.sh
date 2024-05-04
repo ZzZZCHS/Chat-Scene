@@ -9,16 +9,16 @@ epoch=3
 batch_size=32
 lr=5e-6
 train_emb=True
-train_img_proj=False
-add_img_token=False
+train_img_proj=True
+add_img_token=True
 add_scene_token=False
 no_obj=False
-input_dim=128 # 1024
+input_dim=1024 # 1024
 
-# train_tag="scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#scannet_caption#scannet_region_caption#nr3d_caption"
-train_tag="scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#nr3d_caption"
+train_tag="scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#scannet_caption#scannet_region_caption#nr3d_caption"
+# train_tag="scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#nr3d_caption"
 # train_tag="scanrefer#scan2cap#scanqa#sqa3d#multi3dref#nr3d_caption#obj_align"
-val_tag="scanrefer#scan2cap#scanqa#sqa3d#multi3dref"
+val_tag="scanrefer#scan2cap#scanqa#multi3dref#sqa3d"
 
 evaluate=False
 debug=false
@@ -29,9 +29,9 @@ if [ $debug = "true" ]; then
     other_info="debug"
 else
     enable_wandb=True
-    gpu_num=2
+    gpu_num=4
     do_save=True
-    other_info="clasp"
+    other_info="mask3d_video"
 fi
 
 tag="${train_tag}__${val_tag}__${other_info}"
