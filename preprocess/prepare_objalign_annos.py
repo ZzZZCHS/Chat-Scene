@@ -14,6 +14,7 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--segmentor', required=True, type=str)
 parser.add_argument('--version', type=str, default='')
+parser.add_argument('--train_iou_thres', type=float, default=0.75)
 args = parser.parse_args()
 
 unwanted_words = ["wall", "ceiling", "floor", "object", "item"]
@@ -22,7 +23,6 @@ segmentor = args.segmentor
 version = args.version
 
 for split in ["train", "val"]:
-    annos = json.load(open(f"annotations/obj_align_train.json"))
     new_annos = []
 
     instance_attribute_file = f"annotations/scannet_{segmentor}_{split}_attributes{version}.pt"
@@ -54,7 +54,7 @@ for split in ["train", "val"]:
             prompt = f"What is the <OBJ{max_id:03}>?"
             caption = f"<OBJ{max_id:03}> is a {class_label}."
             if split == 'train':
-                if max_iou > 0.75:
+                if max_iou >= args.train_iou_thres:
                     new_annos.append({
                         'scene_id': scene_id,
                         'obj_id': obj_id,

@@ -15,7 +15,7 @@
 - Process data:
     - If you use pretrained Mask3D to do instance segmentation, please set the `segment_result_dir` in [run_prepare.sh](run_prepare.sh) to the output dir of Mask3D.
     - Otherwise, if you directly use the downloaded `mask3d_inst_seg`, please set the `segment_result_dir` to None and set the `inst_seg_dir` to the path to `mask3d_inst_seg`.
-    - Run: `bash preprocess/run_prepare.sh` (some codes are using external files, to be fixed...)
+    - Run: `bash preprocess/run_prepare.sh`
 
 - Use pretrained 3D encoder:
     - Follow [Uni3D](https://github.com/baaivision/Uni3D?tab=readme-ov-file) to extract 3D features of each instance. We use the pretrained model [uni3d-g](https://huggingface.co/BAAI/Uni3D/blob/main/modelzoo/uni3d-g/model.pt).

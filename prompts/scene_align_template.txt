@@ -1,1 +1,0 @@
-Obj12 is the nearest object to obj00.

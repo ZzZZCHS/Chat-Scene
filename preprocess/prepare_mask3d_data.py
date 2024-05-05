@@ -48,8 +48,6 @@ def process_per_scan(scan_id, scan_dir, out_dir, tmp_dir, apply_global_alignment
     #     return
     print(f"processing {scan_id}...")
     os.makedirs(pcd_out_dir, exist_ok=True)
-    # obj_out_dir = os.path.join(out_dir, 'instance_id_to_name_all')
-    # os.makedirs(obj_out_dir, exist_ok=True)
 
     # Load point clouds with colors
     with open(os.path.join(scan_dir, scan_id, '%s_vh_clean_2.ply'%(scan_id)), 'rb') as f:
@@ -57,10 +55,6 @@ def process_per_scan(scan_id, scan_dir, out_dir, tmp_dir, apply_global_alignment
     points = np.array([list(x) for x in plydata.elements[0]]) # [[x, y, z, r, g, b, alpha]]
     coords = np.ascontiguousarray(points[:, :3])
     colors = np.ascontiguousarray(points[:, 3:6])
-
-    # # TODO: normalize the coords and colors
-    # coords = coords - coords.mean(0)
-    # colors = colors / 127.5 - 1
 
     if apply_global_alignment:
         align_matrix = np.eye(4)
@@ -76,30 +70,9 @@ def process_per_scan(scan_id, scan_dir, out_dir, tmp_dir, apply_global_alignment
         # Make sure no nans are introduced after conversion
         assert (np.sum(np.isnan(coords)) == 0)
 
-    # Load point labels if any
-    # colored by nyu40 labels (ply property 'label' denotes the nyu40 label id)
-    # with open(os.path.join(scan_dir, scan_id, '%s_vh_clean_2.labels.ply'%(scan_id)), 'rb') as f:
-    #     plydata = PlyData.read(f)
-    # sem_labels = np.array(plydata.elements[0]['label']).astype(np.long)
-    # assert len(coords) == len(colors) == len(sem_labels)
-    # sem_labels = None
-
-    # Map each point to segment id
-    # if not os.path.exists(os.path.join(scan_dir, scan_id, '%s_vh_clean_2.0.010000.segs.json'%(scan_id))):
-    #     return
-    # with open(os.path.join(scan_dir, scan_id, '%s_vh_clean_2.0.010000.segs.json'%(scan_id)), 'r') as f:
-    #     d = json.load(f)
-    # seg = d['segIndices']
-    # segid_to_pointid = {}
-    # for i, segid in enumerate(seg):
-    #     segid_to_pointid.setdefault(segid, [])
-    #     segid_to_pointid[segid].append(i)
-
-    # Map object to segments
     instance_class_labels = []
     instance_segids = []
 
-    # cur_instances = pointgroup_instances[scan_id].copy()
     if not os.path.exists(os.path.join(tmp_dir, f"{scan_id}.pt")):
         return
     cur_instances = torch.load(os.path.join(tmp_dir, f"{scan_id}.pt"))
@@ -145,11 +118,7 @@ def main():
     args = parse_args()
     os.makedirs(args.output_dir, exist_ok=True)
 
-    if args.num_workers == -1:
-        num_workers = min(mp.cpu_count(), len(scan_ids))
-    else:
-        num_workers = args.num_workers
-    print('num workers:', num_workers)
+    num_workers = args.num_workers
 
     id2class = {}
     with open(args.class_label_file, "r") as f:
@@ -207,4 +176,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

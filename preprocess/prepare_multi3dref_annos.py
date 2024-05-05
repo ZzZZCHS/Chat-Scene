@@ -9,15 +9,16 @@ from utils.box_utils import get_box3d_min_max, box3d_iou, construct_bbox_corners
 from prompts.prompts import multi3dref_prompt, ID_format
 import random
 from collections import defaultdict
+import string
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--segmentor', required=True, type=str)
 parser.add_argument('--version', type=str, default='')
+parser.add_argument('--train_iou_thres', type=float, default=0.75)
 args = parser.parse_args()
 
 segmentor = args.segmentor
 version = args.version
-train_iou_thres = 0.75
 
 for split in ['train', 'val']:
     annos = json.load(open(f"annotations/multi3drefer/multi3drefer_{split}.json"))
@@ -41,9 +42,9 @@ for split in ['train', 'val']:
         instance_num = instance_locs.shape[0]
         gt_ids = anno['object_ids']
         caption = anno['description']
-        if caption.endswith('.') or caption.endswith('?'):
+        if caption[-1] in string.punctuation:
             caption = caption[:-1]
-        prompt = random.choice(multi3dref_prompt).format(caption)
+        prompt = random.choice(multi3dref_prompt).replace("<description>", caption)
         pred_ids = []
         flag = 1
         for gt_id in gt_ids:
@@ -57,7 +58,7 @@ for split in ['train', 'val']:
                 if iou > max_iou:
                     max_iou = iou
                     max_id = pred_id
-            if split == 'train' and (max_iou < train_iou_thres or max_id in pred_ids):
+            if split == 'train' and (max_iou < args.train_iou_thres or max_id in pred_ids):
                 flag = 0
                 break
             pred_ids.append(max_id)

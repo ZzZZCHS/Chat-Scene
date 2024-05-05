@@ -7,6 +7,8 @@ inst_seg_dir=""
 processed_data_dir="/mnt/petrelfs/share_data/huanghaifeng/data/processed/scannet/mask3d_ins_data${version}"
 class_label_file="annotations/scannet/scannetv2-labels.combined.tsv"
 segmentor="mask3d"
+train_iou_thres=0.75
+
 
 python preprocess/prepare_mask3d_data.py \
     --scannet_dir "$scannet_dir" \
@@ -18,35 +20,39 @@ python preprocess/prepare_mask3d_data.py \
     --num_workers 16 \
     --parallel
 
-python preprocess/prepare_scannet_attributes.py \
+python preprocess/prepare_scannet_mask3d_attributes.py \
     --scan_dir "$processed_data_dir" \
     --segmentor "$segmentor" \
     --max_inst_num 100
 
+python preprocess/prepare_scannet_attributes.py \
+    --scannet_dir "$scannet_dir"
+
 python preprocess/prepare_scanrefer_annos.py \
     --segmentor "$segmentor" \
-    --version "$version"
+    --version "$version" \
+    --train_iou_thres "$train_iou_thres"
 
 python preprocess/prepare_scan2cap_annos.py \
     --segmentor "$segmentor" \
-    --version "$version"
+    --version "$version" \
+    --train_iou_thres "$train_iou_thres"
 
 python preprocess/prepare_objalign_annos.py \
     --segmentor "$segmentor" \
-    --version "$version"
+    --version "$version" \
+    --train_iou_thres "$train_iou_thres"
 
 python preprocess/prepare_nr3dcaption_annos.py \
     --segmentor "$segmentor" \
-    --version "$version"
+    --version "$version" \
+    --train_iou_thres "$train_iou_thres"
 
 python preprocess/prepare_multi3dref_annos.py \
     --segmentor "$segmentor" \
-    --version "$version"
+    --version "$version" \
+    --train_iou_thres "$train_iou_thres"
 
-# python preprocess/prepare_scannet_caption_annos.py \
-#     --segmentor "$segmentor" \
-#     --version "$version"
+python preprocess/prepare_scanqa_annos.py
 
-# python preprocess/prepare_scannet_region_caption_annos.py \
-#     --segmentor "$segmentor" \
-#     --version "$version"
+python preprocess/prepare_sqa3d_annos.py

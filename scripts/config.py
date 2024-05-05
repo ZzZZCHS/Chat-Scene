@@ -4,12 +4,7 @@ pc_encoder = "uni3d"
 segmentor = "mask3d"
 version = ""
 
-# feat_file = f"{anno_root}/scannet_{pc_encoder}_feats.pt"
-# img_feat_file = f"{anno_root}/scannet_img_dinov2_features.pt"
-# train_attr_file = f"{anno_root}/scannet_train_attributes.pt"
-# val_attr_file = f"{anno_root}/scannet_val_attributes.pt"
 seg_feat_file = f"{anno_root}/scannet_{segmentor}_{pc_encoder}_feats{version}.pt"
-# seg_img_feat_file = f"{anno_root}/scannet_img_mask3d_dinov2_features{version}.pt"
 seg_img_feat_file = None
 seg_train_attr_file = f"{anno_root}/scannet_{segmentor}_train_attributes{version}.pt"
 seg_val_attr_file = f"{anno_root}/scannet_{segmentor}_val_attributes{version}.pt"
@@ -22,19 +17,19 @@ train_file_dict = {
         seg_feat_file,
         seg_img_feat_file,
         seg_train_attr_file,
-        f"{anno_root}/scanrefer_{segmentor}_train_grounding{version}.json"
+        f"{anno_root}/scanrefer_{segmentor}_train{version}.json"
     ],
     'scan2cap': [
         seg_feat_file,
         seg_img_feat_file,
         seg_train_attr_file,
-        f"{anno_root}/scanrefer_{segmentor}_train_caption{version}.json"
+        f"{anno_root}/scan2cap_{segmentor}_train{version}.json"
     ],
     'nr3d_caption': [
         seg_feat_file,
         seg_img_feat_file,
         seg_train_attr_file,
-        f"{anno_root}/nr3d_{segmentor}_train_caption{version}.json"
+        f"{anno_root}/nr3d_caption_{segmentor}_train{version}.json"
     ],
     'obj_align': [
         seg_feat_file,
@@ -64,20 +59,13 @@ train_file_dict = {
         seg_feat_file,
         seg_img_feat_file,
         seg_train_attr_file,
-        f"{anno_root}/scannet_{segmentor}_train_caption{version}.json"
+        f"{anno_root}/scannet_caption_{segmentor}_train{version}.json"
     ],
     'scannet_region_caption': [
         seg_feat_file,
         seg_img_feat_file,
         seg_train_attr_file,
-        f"{anno_root}/scannet_{segmentor}_train_region_caption{version}.json",
-    ],
-    'objaverse': [
-        f"{anno_root}/objaverse_uni3d_feature_train.pt",
-        None,
-        None,
-        f"{anno_root}/objaverse_caption_train.json",
-        1
+        f"{anno_root}/scannet_region_caption_{segmentor}_train{version}.json",
     ]
 }
 
@@ -92,19 +80,13 @@ val_file_dict = {
         seg_feat_file,
         seg_img_feat_file,
         seg_val_attr_file,
-        f"{anno_root}/scanrefer_{segmentor}_val_grounding{version}.json"
+        f"{anno_root}/scanrefer_{segmentor}_val{version}.json"
     ],
     'scan2cap': [
         seg_feat_file,
         seg_img_feat_file,
         seg_val_attr_file,
-        f"{anno_root}/scanrefer_{segmentor}_val_caption{version}.json"
-    ],
-    'objaverse': [
-        f"{anno_root}/objaverse_uni3d_feature_val.pt",
-        None,
-        None,
-        f"{anno_root}/objaverse_caption_val.json"
+        f"{anno_root}/scan2cap_{segmentor}_val{version}.json"
     ],
     'sqa3d': [
         seg_feat_file,
