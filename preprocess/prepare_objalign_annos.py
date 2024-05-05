@@ -23,7 +23,6 @@ segmentor = args.segmentor
 version = args.version
 
 for split in ["train", "val"]:
-    annos = json.load(open(f"annotations/obj_align_train.json"))
     new_annos = []
 
     instance_attribute_file = f"annotations/scannet_{segmentor}_{split}_attributes{version}.pt"

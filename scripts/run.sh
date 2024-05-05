@@ -2,22 +2,21 @@ which_python=$(which python)
 export PYTHONPATH=${PYTHONPATH}:${which_python}:.
 echo "PYTHONPATH: ${PYTHONPATH}"
 
-export MASTER_PORT=$((53000 + $RANDOM % 10000))
+export MASTER_PORT=$((54000 + $RANDOM % 10000))
 export MASTER_ADDR=localhost
 
 epoch=3
 batch_size=32
 lr=5e-6
 train_emb=True
-train_img_proj=True
-add_img_token=True
+train_img_proj=False
+add_img_token=False
 add_scene_token=False
 no_obj=False
 input_dim=1024 # 1024
 
-train_tag="scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#scannet_caption#scannet_region_caption#nr3d_caption"
-# train_tag="scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#nr3d_caption"
-# train_tag="scanrefer#scan2cap#scanqa#sqa3d#multi3dref#nr3d_caption#obj_align"
+# train_tag="scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#scannet_caption#scannet_region_caption#nr3d_caption"
+train_tag="scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#nr3d_caption"
 val_tag="scanrefer#scan2cap#scanqa#multi3dref#sqa3d"
 
 evaluate=False
@@ -31,7 +30,7 @@ else
     enable_wandb=True
     gpu_num=4
     do_save=True
-    other_info="mask3d_video"
+    other_info="v2.1"
 fi
 
 tag="${train_tag}__${val_tag}__${other_info}"

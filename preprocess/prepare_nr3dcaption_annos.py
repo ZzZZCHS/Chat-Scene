@@ -8,6 +8,8 @@ from tqdm import tqdm
 from collections import defaultdict
 import argparse
 from utils.box_utils import get_box3d_min_max, box3d_iou, construct_bbox_corners
+from prompts.prompts import nr3d_caption_prompt
+import csv
 
 
 parser = argparse.ArgumentParser()
@@ -17,14 +19,28 @@ parser.add_argument('--version', type=str, default='')
 parser.add_argument('--train_iou_thres', type=float, default=0.75)
 args = parser.parse_args()
 
-
 segmentor = args.segmentor
 version = args.version
 
-templates = [line.rstrip() for line in open('prompts/nr3d_caption_templates.txt')]
+train_scenes = [x.strip() for x in open('annotations/scannet/scannetv2_train.txt').readlines()]
+val_scenes = [x.strip() for x in open('annotations/scannet/scannetv2_val.txt').readlines()]
+scene_lists = {
+    'train': train_scenes,
+    'val': val_scenes
+}
 
-for split in ["train", "val"]:
-    annos = json.load(open(f"annotations/nr3d_{split}_stage2_objxx.json"))
+raw_annos = []
+with open('annotations/referit3d/nr3d.csv') as csvfile:
+    reader = csv.DictReader(csvfile)
+    for row in reader:
+        raw_annos.append({
+            'scene_id': row['scan_id'],
+            'obj_id': int(row['target_id']),
+            'caption': row['utterance']
+        })
+
+for split in ["train"]:
+    annos = [anno for anno in raw_annos if anno['scene_id'] in scene_lists[split]]
     new_annos = []
 
     instance_attribute_file = f"annotations/scannet_{segmentor}_{split}_attributes{version}.pt"
@@ -50,7 +66,7 @@ for split in ["train", "val"]:
             if iou > max_iou:
                 max_iou = iou
                 max_id = pred_id
-        prompt = random.choice(templates).replace('<id>', f"<OBJ{max_id:03}>")
+        prompt = random.choice(nr3d_caption_prompt).replace('<id>', f"<OBJ{max_id:03}>")
         if split == 'train':
             if max_iou >= args.train_iou_thres:
                 new_annos.append({
@@ -64,8 +80,9 @@ for split in ["train", "val"]:
                 'scene_id': scene_id,
                 'obj_id': obj_id,
                 'prompt': prompt,
-                'ref_captions': anno['ref_captions']
+                'ref_captions': [anno['caption']]
             })
     print(len(new_annos))
-    with open(f"annotations/nr3d_{segmentor}_{split}_caption{version}.json", 'w') as f:
+
+    with open(f"annotations/nr3d_caption_{segmentor}_{split}{version}.json", 'w') as f:
         json.dump(new_annos, f, indent=4)

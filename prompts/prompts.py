@@ -37,7 +37,16 @@ obj_caption_wid_prompt = [
 ]
 
 multi3dref_prompt = [
-    "Is there any object that matches the given description: \"{}\"? If yes, please list the IDs of all the matched objects."
+    "Are there any objects fitting the description of \"<description>\"? If so, kindly provide the IDs for those objects.",
+    "Do any objects match the description of \"<description>\"? If they do, please share the IDs of those objects.",
+    "Is there anything that matches the description \"<description>\"? If yes, please share the IDs of those objects.",
+    "Are there objects that correspond to the description \"<description>\"? If there are, kindly list their IDs.",
+    "Does anything fit the description of \"<description>\"? If it does, could you list the IDs for those objects?",
+    "Are there objects described as \"<description>\"? If there are, please provide the IDs for those objects.",
+    "Have any objects been described as \"<description>\"? If so, please share the IDs of those objects.",
+    "Do any objects meet the criteria of \"<description>\"? If they do, kindly provide the IDs of those objects.",
+    "Are there objects with the attributes of \"<description>\"? If there are, please list their IDs.",
+    "Are there any objects that correspond to the description \"<description>\"? If yes, could you share the IDs for those objects?"
 ]
 
 region_caption_prompt = [
@@ -54,16 +63,15 @@ region_caption_prompt = [
 ]
 
 scanrefer_prompt = [
-    "Based on the details provided, \"<description>\", kindly specify the ID of the object that best corresponds to this information.",
-    "As per the provided description, \"<description>\", could you please indicate the ID of the object that most accurately fits this description?",
-    "According to the description provided, \"<description>\", please specify the ID of the object that closely resembles this description.",
-    "In light of the given description, \"<description>\", would you mind providing the ID of the object that aligns most closely with this description?",
-    "Considering the details given, \"<description>\", please state the ID of the object that closely matches this description.",
-    "With the provided description, \"<description>\", please identify the ID of the object that closely resembles this description.",
-    "Given the description, \"<description>\", could you please indicate the ID of the object that best matches this description?",
-    "According to the description provided, \"<description>\", please answer with the ID of the object that closely matches this description.",
-    "Based on the provided details, \"<description>\", kindly specify the ID of the object that most closely aligns with this description.",
-    "Considering the given description,\"<description>\", please provide the ID of the object that best corresponds to this information."
+    "Share the ID of the object that best fits the description \"<description>\".",
+    "Kindly provide the ID of the object that closely matches the description \"<description>\".",
+    "What is the ID of the object that aligns with the description \"<description>\"?",
+    "Identify the ID of the object that closely resembles the description \"<description>\".",
+    "What's the ID of the object that corresponds to the description \"<description>\"?",
+    "Give the ID of the object that most accurately describes the description \"<description>\".",
+    "Share the ID of the object that best corresponds to the description \"<description>\".",
+    "Identify the ID of the object that closely aligns with the description \"<description>\".",
+    "What is the ID of the object that matches the description \"<description>\"?"
 ]
 
 scan2cap_prompt = [
@@ -77,4 +85,17 @@ scan2cap_prompt = [
     "Detail the physical characteristics of the <id> and subsequently examine its spatial dynamics amidst other objects in the scene.",
     "Describe the visual traits of <id> first, then elucidate its spatial arrangements in relation to neighboring elements.",
     "Begin by outlining the appearance of <id>, then proceed to illustrate its spatial orientation within the scene alongside other objects."
+]
+
+nr3d_caption_prompt = [
+    "Detail the spatial positioning of the <id> amidst surrounding elements.",
+    "Illustrate the <id>'s placement relative to its environment.",
+    "Explain the <id>'s location in correlation with nearby items.",
+    "Elaborate on the <id>'s spatial context within the scene.",
+    "Describe how the <id> is situated in relation to other elements present.",
+    "Provide insight into the <id>'s positioning among its surroundings.",
+    "Discuss the relative placement of the <id> compared to its surrounding context.",
+    "Offer a depiction of the <id>'s spatial orientation within the scene.",
+    "Interpret the <id>'s location within the broader context of the scene.",
+    "Present the <id>'s spatial relationship with other entities within the scene."
 ]

@@ -9,6 +9,14 @@ from collections import defaultdict
 import argparse
 from utils.box_utils import get_box3d_min_max, box3d_iou, construct_bbox_corners
 from prompts.prompts import scan2cap_prompt
+import nltk
+
+
+def capitalize_sentences(text):
+    sentences = nltk.sent_tokenize(text)
+    capitalized_sentences = [sentence.capitalize() for sentence in sentences]
+    result = ' '.join(capitalized_sentences)
+    return result
 
 
 parser = argparse.ArgumentParser()
@@ -29,7 +37,8 @@ for split in ["train", "val"]:
     corpus = defaultdict(list)
     for anno in annos:
         gt_key = f"{anno['scene_id']}|{anno['object_id']}"
-        corpus[gt_key].append(anno['description'])
+        description = capitalize_sentences(anno['description'])
+        corpus[gt_key].append(description)
 
     count = [0] * 100
     instance_attribute_file = f"annotations/scannet_{segmentor}_{split}_attributes{version}.pt"

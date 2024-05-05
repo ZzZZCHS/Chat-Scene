@@ -4,10 +4,6 @@ pc_encoder = "uni3d" # uni3d, clasp
 segmentor = "mask3d" # mask3d, clasp
 version = ""
 
-# feat_file = f"{anno_root}/scannet_{pc_encoder}_feats.pt"
-# img_feat_file = f"{anno_root}/scannet_img_dinov2_features.pt"
-# train_attr_file = f"{anno_root}/scannet_train_attributes.pt"
-# val_attr_file = f"{anno_root}/scannet_val_attributes.pt"
 seg_feat_file = f"{anno_root}/scannet_{segmentor}_{pc_encoder}_feats{version}.pt"
 # seg_img_feat_file = f"{anno_root}/scannet_img_mask3d_dinov2_features{version}.pt"
 seg_img_feat_file = f"{anno_root}/scannet_mask3d_videofeats{version}.pt"
