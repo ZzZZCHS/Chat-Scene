@@ -28,7 +28,7 @@ for split in ["train", "val"]:
     annos = sorted(annos, key=lambda p: f"{p['scene_id']}_{int(p['object_id']):03}")
     new_annos = []
 
-    instance_attribute_file = f"annotations/scannet_{segmentor}_{split}_attributes.pt"
+    instance_attribute_file = f"annotations/scannet_{segmentor}_{split}_attributes{version}.pt"
     scannet_attribute_file = f"annotations/scannet_{split}_attributes.pt"
 
     instance_attrs = torch.load(instance_attribute_file)

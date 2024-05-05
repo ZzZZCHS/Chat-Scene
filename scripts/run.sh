@@ -7,7 +7,7 @@ export MASTER_ADDR=localhost
 
 epoch=3
 batch_size=32
-lr=5e-6
+lr=2e-6
 train_emb=True
 train_img_proj=False
 add_img_token=False

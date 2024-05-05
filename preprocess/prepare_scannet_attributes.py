@@ -5,7 +5,6 @@ import json
 import torch
 from collections import defaultdict
 from tqdm import tqdm
-import mmengine
 import argparse
 
 parser = argparse.ArgumentParser()
