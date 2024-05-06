@@ -94,13 +94,13 @@ This is an official repo for paper "Chat-3D v2: Bridging 3D Scene and Large Lang
 
     | Batch Size | GPU | VRAM Usage per GPU | Training Time | ckpt |
     | :---: | :---: | :---: | :---: | :---: |
-    | 32 | 4 * A100 | ~ 70 GB | ~ 8 hours | [Google Drive](https://drive.google.com/file/d/1hv-N-p9tm6nhoe6tlbZANgxYIjuVvX1n/view?usp=sharing) |
+    | 32 | 4 * A100 | ~ 70 GB | ~ 8 hours | [Google Drive](https://drive.google.com/drive/folders/10CmcD2RqJyzmrzdNDyU-5Ha6QRT9MOoR?usp=drive_link) |
     | 1 | 1 * A100 | ~ 28 GB | ~ 3 days | - |
 
 
 - Inference
   
-  - Modify [run.sh](scripts/run.sh): (We provide the pretrained checkpoint in [Google Drive](https://drive.google.com/file/d/1hv-N-p9tm6nhoe6tlbZANgxYIjuVvX1n/view?usp=sharing))
+  - Modify [run.sh](scripts/run.sh): (We provide the pretrained checkpoint in [Google Drive](https://drive.google.com/drive/folders/10CmcD2RqJyzmrzdNDyU-5Ha6QRT9MOoR?usp=drive_link))
   
     ```python
     val_tag="scanrefer#scan2cap#scanqa#sqa3d#multi3dref"
