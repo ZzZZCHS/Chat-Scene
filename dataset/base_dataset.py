@@ -83,8 +83,8 @@ class BaseDataset(Dataset):
             scene_feat = scene_feat.unsqueeze(0)
         scene_img_feat = self.scene_img_feats[scene_id] if self.scene_img_feats is not None else torch.zeros((scene_feat.shape[0], self.img_feat_dim))
         scene_mask = self.scene_masks[scene_id] if self.scene_masks is not None else torch.ones(scene_feat.shape[0], dtype=torch.int)
-        assigned_ids = torch.randperm(200)[:len(scene_locs)]
-        # assigned_ids = torch.randperm(len(scene_locs))
+        # assigned_ids = torch.randperm(200)[:len(scene_locs)]
+        assigned_ids = torch.arange(len(scene_locs))
         return scene_id, scene_feat, scene_img_feat, scene_mask, scene_locs, assigned_ids
     
 
