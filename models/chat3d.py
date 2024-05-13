@@ -53,16 +53,17 @@ class Chat3D(nn.Module):
         self.no_obj = config.model.no_obj
         self.add_scene_token = config.model.add_scene_token
         self.add_img_token = config.model.add_img_token
-        self.obj_norm_scale = config.model.obj_norm_scale
-        self.scene_norm_scale = config.model.scene_norm_scale
-        self.grad_scale = config.model.grad_scale
         self.train_emb = config.model.train_emb
         self.train_img_proj = config.model.train_img_proj
-
         self.input_dim = config.model.input_dim
         self.img_input_dim = config.model.img_input_dim
         self.attr_dim = config.model.attr_dim
         self.scene_dim = config.model.scene_dim
+        self.pos_dim = config.model.pos_dim
+        self.max_obj_num = config.model.max_obj_num
+        self.bidirection = config.model.bidirection
+        self.add_pos_emb = config.model.add_pos_emb
+        self.feat_fusion = config.model.feat_fusion
 
         self.debug = config.debug
         if not self.debug:
@@ -126,6 +127,7 @@ class Chat3D(nn.Module):
                 self.llama_model.print_trainable_parameters()
                 self.llama_model.model.lm_head.weight.requires_grad = True
                 self.llama_model.model.lm_head.weight.data = self.llama_model.model.lm_head.weight.data.float()
+                self.llama_model.print_trainable_parameters()
                 self.llama_model.model.model.embed_tokens.weight.requires_grad = True
                 self.llama_model.model.model.embed_tokens.weight.data = self.llama_model.model.model.embed_tokens.weight.data.float()
                 self.llama_model.print_trainable_parameters()
@@ -138,7 +140,7 @@ class Chat3D(nn.Module):
             self.llama_model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant":False})
 
             objid_tokens = []
-            for i in range(200):
+            for i in range(self.max_obj_num):
                 objid_tokens.append(f"<OBJ{i:03}>")
             self.objid_start_idx = self.ori_vocab_size = len(self.llama_tokenizer)
             self.llama_tokenizer.add_tokens(objid_tokens, special_tokens=True)
@@ -165,9 +167,9 @@ class Chat3D(nn.Module):
         if not self.train_img_proj:
             for p in self.object_img_proj.parameters():
                 p.requires_grad = False
-        self.pos_embedding = PositionEmbeddingCoordsSine(d_pos=self.llama_dim)
+        self.pos_embedding = PositionEmbeddingCoordsSine(d_pos=self.pos_dim)
         self.pos_proj = nn.Sequential(
-            nn.Linear(self.scene_dim, self.scene_dim)
+            nn.Linear(self.pos_dim, self.llama_dim)
         )
         self.encoder_layer = nn.TransformerEncoderLayer(d_model=self.scene_dim, nhead=8, dim_feedforward=2048, dropout=0.05, norm_first=True, batch_first=True)
         self.relation_module = nn.TransformerEncoder(self.encoder_layer, num_layers=config.model.encoder_num_layers)
@@ -201,6 +203,13 @@ class Chat3D(nn.Module):
         self.last_embed = None
         
         # print_grad_status(self)
+
+    def get_objid_embeds(self):
+        if self.config.model.use_lora:
+            objid_embeds = self.llama_model.model.model.embed_tokens.weight[self.objid_start_idx:self.objid_end_idx] # max_obj_num * 4096
+        else:
+            objid_embeds = self.llama_model.model.embed_tokens.weight[self.objid_start_idx:self.objid_end_idx]
+        return objid_embeds
     
     def llama_embed_tokens(self, token_ids):
         if self.config.model.use_lora:
@@ -248,56 +257,64 @@ class Chat3D(nn.Module):
         # object_list_embed = torch.stack(object_list_embed, dim=0)
         # return object_list_embed
         if self.config.model.use_lora:
-            objid_embeds = self.llama_model.model.model.embed_tokens.weight[self.objid_start_idx:self.objid_end_idx] # 200 * 4096
+            objid_embeds = self.llama_model.model.model.embed_tokens.weight[self.objid_start_idx:self.objid_end_idx] # max_obj_num * 4096
         else:
             objid_embeds = self.llama_model.model.embed_tokens.weight[self.objid_start_idx:self.objid_end_idx]
-        if len(valid_ids) == 1:
-            object_list_embed = []
-            object_list_embed.append(objid_embeds[obj_id])
-            if not self.no_obj:
-                object_list_embed.append(embed_obj[valid_ids[0]])
-            # if embed_scene is not None:
-            #     object_list_embed.append(embed_scene[valid_ids[0]])
-            # if embed_img is not None:
-            #     object_list_embed.append(embed_img[valid_ids[0]])
-            object_list_embed = torch.stack(object_list_embed, dim=0)
-            return object_list_embed
-        random.shuffle(valid_ids)
+        # if len(valid_ids) == 1:
+        #     object_list_embed = []
+        #     object_list_embed.append(objid_embeds[obj_id])
+        #     if not self.no_obj:
+        #         object_list_embed.append(embed_obj[valid_ids[0]])
+        #     # if embed_scene is not None:
+        #     #     object_list_embed.append(embed_scene[valid_ids[0]])
+        #     # if embed_img is not None:
+        #     #     object_list_embed.append(embed_img[valid_ids[0]])
+        #     object_list_embed = torch.stack(object_list_embed, dim=0)
+        #     return object_list_embed
+        # random.shuffle(valid_ids)
+
         assigned_ids = assigned_ids[valid_ids]
         if not self.train_emb:
             objid_embeds = objid_embeds.detach()
-        selected_objid_embeds = objid_embeds[assigned_ids]
+        selected_objid_embeds = objid_embeds[valid_ids]
+        if self.feat_fusion:
+            object_list_embed = torch.zeros((selected_objid_embeds.shape[0], selected_objid_embeds.shape[1]), dtype=selected_objid_embeds.dtype, device=selected_objid_embeds.device)
+            if not self.no_obj:
+                object_list_embed += embed_obj[assigned_ids]
+            if self.add_img_token:
+                object_list_embed += embed_img[assigned_ids]
         if self.no_obj:
             # if embed_img is None:
             object_list_embed = torch.zeros((selected_objid_embeds.shape[0] * 2, selected_objid_embeds.shape[1]), dtype=selected_objid_embeds.dtype, device=selected_objid_embeds.device)
             object_list_embed[0::2, :] = selected_objid_embeds
-            object_list_embed[1::2, :] = embed_img[valid_ids]
+            object_list_embed[1::2, :] = embed_img[assigned_ids]
             # else:
             #     object_list_embed = torch.zeros((selected_objid_embeds.shape[0] * 3, selected_objid_embeds.shape[1]), dtype=selected_objid_embeds.dtype, device=selected_objid_embeds.device)
             #     object_list_embed[0::3, :] = selected_objid_embeds
-            #     object_list_embed[1::3, :] = embed_scene[valid_ids]
-            #     object_list_embed[2::3, :] = embed_img[valid_ids]
+            #     object_list_embed[1::3, :] = embed_scene[assigned_ids]
+            #     object_list_embed[2::3, :] = embed_img[assigned_ids]
             return object_list_embed
         if embed_img is None and embed_scene is None:
             object_list_embed = torch.zeros((selected_objid_embeds.shape[0] * 2, selected_objid_embeds.shape[1]), dtype=selected_objid_embeds.dtype, device=selected_objid_embeds.device)
             object_list_embed[0::2, :] = selected_objid_embeds
-            object_list_embed[1::2, :] = embed_obj[valid_ids]
+            object_list_embed[1::2, :] = embed_obj[assigned_ids]
+            # object_list_embed = selected_objid_embeds + embed_obj[assigned_ids]
         if embed_img is None and embed_scene is not None:
             object_list_embed = torch.zeros((selected_objid_embeds.shape[0] * 3, selected_objid_embeds.shape[1]), dtype=selected_objid_embeds.dtype, device=selected_objid_embeds.device)
             object_list_embed[0::3, :] = selected_objid_embeds
-            object_list_embed[1::3, :] = embed_obj[valid_ids]
-            object_list_embed[2::3, :] = embed_scene[valid_ids]
+            object_list_embed[1::3, :] = embed_obj[assigned_ids]
+            object_list_embed[2::3, :] = embed_scene[assigned_ids]
         if embed_img is not None and embed_scene is None:
             object_list_embed = torch.zeros((selected_objid_embeds.shape[0] * 3, selected_objid_embeds.shape[1]), dtype=selected_objid_embeds.dtype, device=selected_objid_embeds.device)
             object_list_embed[0::3, :] = selected_objid_embeds
-            object_list_embed[1::3, :] = embed_obj[valid_ids]
-            object_list_embed[2::3, :] = embed_img[valid_ids]
+            object_list_embed[1::3, :] = embed_obj[assigned_ids]
+            object_list_embed[2::3, :] = embed_img[assigned_ids]
         if embed_img is not None and embed_scene is not None:
             object_list_embed = torch.zeros((selected_objid_embeds.shape[0] * 4, selected_objid_embeds.shape[1]), dtype=selected_objid_embeds.dtype, device=selected_objid_embeds.device)
             object_list_embed[0::4, :] = selected_objid_embeds
-            object_list_embed[1::4, :] = embed_obj[valid_ids]
-            object_list_embed[2::4, :] = embed_scene[valid_ids]
-            object_list_embed[3::4, :] = embed_img[valid_ids]
+            object_list_embed[1::4, :] = embed_obj[assigned_ids]
+            object_list_embed[2::4, :] = embed_scene[assigned_ids]
+            object_list_embed[3::4, :] = embed_img[assigned_ids]
         return object_list_embed
 
     def get_min_max_coord(self, xyz, scene_mask):
@@ -313,10 +330,13 @@ class Chat3D(nn.Module):
         device = object_embed.device
         batch_size = object_embed.shape[0]
         proj_object_embed = self.object_proj(object_embed)
-        # mins, maxs = self.get_min_max_coord(scene_locs[:, :, :3], scene_mask)
-        # pos_embed = self.pos_embedding(scene_locs[:, :, :3], input_range=[mins, maxs])
-        # proj_object_embed = pos_embed + proj_object_embed
         proj_object_img_embed = self.object_img_proj(object_img_embed)
+        if self.add_pos_emb:
+            mins, maxs = self.get_min_max_coord(scene_locs[:, :, :3], scene_mask)
+            pos_embed = self.pos_embedding(scene_locs[:, :, :3], input_range=[mins, maxs])
+            proj_pos_embed = self.pos_proj(pos_embed)
+            proj_object_embed += proj_pos_embed
+            proj_object_img_embed += proj_pos_embed
 
         proj_scene_embed = None
         if self.add_scene_token:  # remember to change the evaluate 
@@ -334,6 +354,7 @@ class Chat3D(nn.Module):
         max_seq_len = 0
         p_0_embed = self.p_0_embed.to(device)
         p_1_embed = self.p_1_embed.to(device)
+        object_list_intervals = []
 
         for i, question in enumerate(questions):
             prompt = f" {question} {self.role[1]}: "
@@ -347,6 +368,7 @@ class Chat3D(nn.Module):
                 assigned_ids[i]
             )
             # object_list_embed = nclamp(object_list_embed, min=-0.05, max=0.05)
+            object_list_intervals.append((p_0_embed.shape[0], p_0_embed.shape[0] + object_list_embed.shape[0]))
             wrapped_embed = torch.cat([p_0_embed, object_list_embed, p_1_embed, prompt_embed], dim=0)
             wrapped_attn = torch.ones(wrapped_embed.size()[:-1], dtype=torch.long).to(wrapped_embed.device)
             empty_target = (
@@ -379,10 +401,20 @@ class Chat3D(nn.Module):
             return padded
         
         input_embeds = pad_and_trim(input_embed_list, max_seq_len, batch_first=True, padding_value=0).to(device)
-        attention_mask = pad_and_trim(attn_list, max_seq_len, batch_first=True, padding_value=0).to(device)
         targets = pad_and_trim(target_list, max_seq_len, batch_first=True, padding_value=-100).to(device)
+        attention_mask = pad_and_trim(attn_list, max_seq_len, batch_first=True, padding_value=0).to(device)
+        if self.bidirection:
+            input_dtype = input_embeds.dtype
+            causal_mask = torch.ones((max_seq_len, max_seq_len), dtype=input_dtype, device=device)
+            causal_mask = torch.tril(causal_mask, diagonal=0)
+            causal_mask = causal_mask[None, None, :, :].expand(input_embeds.shape[0], 1, -1, -1).clone()
+            padding_mask = causal_mask[..., :].eq(1.0) * attention_mask[:, None, None, :].eq(0.0)
+            causal_mask[..., :] = causal_mask[..., :].masked_fill(padding_mask, 0.0)
+            for i in range(causal_mask.shape[0]):
+                st, ed = object_list_intervals[i]
+                causal_mask[i, :, st:ed, st:ed] = 1.0
+            attention_mask = causal_mask
 
-        
         with self.maybe_autocast():
             outputs = self.llama_model(
                 inputs_embeds=input_embeds,
@@ -395,6 +427,7 @@ class Chat3D(nn.Module):
             loss=outputs.loss,
             obj_norm=proj_object_embed.norm(dim=-1).mean().detach().cpu(),
             obj_img_norm=proj_object_img_embed.norm(dim=-1).mean().detach().cpu(),
+            objid_norm=self.get_objid_embeds().norm(dim=-1).mean().detach().cpu(),
             scene_norm=proj_scene_embed.norm(dim=-1).mean().detach().cpu() if proj_scene_embed is not None else 0.,
             max_seq_len=max_seq_len
         )
@@ -404,10 +437,13 @@ class Chat3D(nn.Module):
         device = object_embed.device
         batch_size, obj_num = object_embed.shape[:2]
         proj_object_embed = self.object_proj(object_embed)
-        # mins, maxs = self.get_min_max_coord(scene_locs[:, :, :3], scene_mask)
-        # pos_embed = self.pos_embedding(scene_locs[:, :, :3], input_range=[mins, maxs])
-        # proj_object_embed = pos_embed + proj_object_embed
         proj_object_img_embed = self.object_img_proj(object_img_embed)
+        if self.add_pos_emb:
+            mins, maxs = self.get_min_max_coord(scene_locs[:, :, :3], scene_mask)
+            pos_embed = self.pos_embedding(scene_locs[:, :, :3], input_range=[mins, maxs])
+            proj_pos_embed = self.pos_proj(pos_embed)
+            proj_object_embed += proj_pos_embed
+            proj_object_img_embed += proj_pos_embed
         if self.add_scene_token:
             # if self.add_img_token:
             #     object_embed = object_embed + object_img_embed
@@ -436,6 +472,15 @@ class Chat3D(nn.Module):
             )
             object_list_embed = object_list_embed.unsqueeze(0)
             wrapped_embed = torch.cat([p_0_embed, object_list_embed, p_1_embed, prompt_embed], dim=1)
+            attention_mask=None
+            if self.bidirection:
+                seq_len = wrapped_embed.shape[1]
+                attention_mask = torch.ones((seq_len, seq_len), dtype=wrapped_embed.dtype, device=device)
+                attention_mask = torch.tril(attention_mask, diagonal=0)
+                attention_mask = attention_mask[None, None, :, :].expand(1, 1, -1, -1).clone()
+                st, ed = p_0_embed.shape[1], p_0_embed.shape[1] + object_list_embed.shape[1]
+                attention_mask[:, :, st:ed, st:ed] = 1.0
+            
             with self.maybe_autocast():
                 outputs = self.llama_model.generate(
                     inputs_embeds=wrapped_embed,
@@ -448,6 +493,7 @@ class Chat3D(nn.Module):
                     repetition_penalty=3.0,
                     length_penalty=1,
                     temperature=1.0,
+                    customized_mask=attention_mask
                 )
             output_token = outputs[0]
             output_text = self.llama_tokenizer.decode(output_token)

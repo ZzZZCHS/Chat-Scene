@@ -16,24 +16,35 @@ logger = logging.getLogger(__name__)
 
 class ValDataset(BaseDataset):
 
+    cached_feats = {}
+
     def __init__(self, ann_list, dataset_name, config, **kwargs):
         super().__init__()
         self.dataset_name = dataset_name
         self.feat_dim = config.model.input_dim
         self.img_feat_dim = config.model.img_input_dim
+        self.max_obj_num = config.model.max_obj_num
+
         feat_file, img_feat_file, attribute_file, anno_file = ann_list[:4]
-        self.feats = torch.load(feat_file, map_location='cpu')
-        if img_feat_file is not None and os.path.exists(img_feat_file):
-            self.img_feats = torch.load(img_feat_file, map_location='cpu')
-        else:
-            self.img_feats = None
         self.attributes = torch.load(attribute_file, map_location='cpu') if attribute_file is not None else None
         self.anno = json.load(open(anno_file, 'r'))
-        if self.attributes is None:
-            self.scene_feats = self.feats
-            self.scene_img_feats = self.scene_masks = None
+
+        if feat_file in ValDataset.cached_feats and img_feat_file in ValDataset.cached_feats:
+            self.scene_feats, self.scene_masks = ValDataset.cached_feats[feat_file]
+            self.scene_img_feats = ValDataset.cached_feats[img_feat_file]
         else:
-            self.scene_feats, self.scene_img_feats, self.scene_masks = self.prepare_scene_features()
+            self.feats = torch.load(feat_file, map_location='cpu')
+            if img_feat_file is not None and os.path.exists(img_feat_file):
+                self.img_feats = torch.load(img_feat_file, map_location='cpu')
+            else:
+                self.img_feats = None
+            if self.attributes is None:
+                self.scene_feats = self.feats
+                self.scene_img_feats = self.scene_masks = None
+            else:
+                self.scene_feats, self.scene_img_feats, self.scene_masks = self.prepare_scene_features()
+            ValDataset.cached_feats[feat_file] = (self.scene_feats, self.scene_masks)
+            ValDataset.cached_feats[img_feat_file] = self.scene_img_feats
 
     def __len__(self):
         return len(self.anno)

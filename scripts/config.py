@@ -1,15 +1,16 @@
 # ========================= data ==========================
 anno_root = "annotations"  # annotation dir
-pc_encoder = "uni3d" # uni3d, clasp
-segmentor = "mask3d" # mask3d, clasp
+pc_encoder = "uni3d" # uni3d, clasp, dinov2
+segmentor = "mask3d" # mask3d, clasp, deva
 version = ""
 
-seg_feat_file = f"{anno_root}/scannet_{segmentor}_{pc_encoder}_feats{version}.pt"
+seg_feat_file = f"{anno_root}/scannet_{segmentor}_{pc_encoder}_feats.pt"
 # seg_img_feat_file = f"{anno_root}/scannet_img_mask3d_dinov2_features{version}.pt"
-seg_img_feat_file = f"{anno_root}/scannet_mask3d_videofeats{version}.pt"
+seg_img_feat_file = f"{anno_root}/scannet_{segmentor}_videofeats{version}.pt"
 # seg_img_feat_file = None
 seg_train_attr_file = f"{anno_root}/scannet_{segmentor}_train_attributes{version}.pt"
 seg_val_attr_file = f"{anno_root}/scannet_{segmentor}_val_attributes{version}.pt"
+# seg_train_attr_file = seg_val_attr_file = f"{anno_root}/scannet_{segmentor}_attributes{version}.pt"
 
 train_tag = 'scanqa'
 val_tag = 'scanqa'
@@ -20,6 +21,18 @@ train_file_dict = {
         seg_img_feat_file,
         seg_train_attr_file,
         f"{anno_root}/scanrefer_{segmentor}_train{version}.json"
+    ],
+    'nr3d': [
+        seg_feat_file,
+        seg_img_feat_file,
+        seg_train_attr_file,
+        f"{anno_root}/nr3d_{segmentor}_train{version}.json"
+    ],
+    'sr3d': [
+        seg_feat_file,
+        seg_img_feat_file,
+        seg_train_attr_file,
+        f"{anno_root}/sr3d_{segmentor}_train{version}.json"
     ],
     'scan2cap': [
         seg_feat_file,
@@ -84,6 +97,18 @@ val_file_dict = {
         seg_val_attr_file,
         f"{anno_root}/scanrefer_{segmentor}_val{version}.json"
     ],
+    'nr3d': [
+        seg_feat_file,
+        seg_img_feat_file,
+        seg_val_attr_file,
+        f"{anno_root}/nr3d_{segmentor}_val{version}.json"
+    ],
+    'sr3d': [
+        seg_feat_file,
+        seg_img_feat_file,
+        seg_val_attr_file,
+        f"{anno_root}/sr3d_{segmentor}_val{version}.json"
+    ],
     'scan2cap': [
         seg_feat_file,
         seg_img_feat_file,
@@ -101,7 +126,7 @@ val_file_dict = {
         seg_img_feat_file,
         seg_val_attr_file,
         f"{anno_root}/multi3dref_{segmentor}_val{version}.json"
-    ]
+    ],
 }
 
 
@@ -116,6 +141,7 @@ model = dict(
     img_input_dim=1024,
     attr_dim=512,
     scene_dim=256,
+    pos_dim=128,
     encoder_num_layers=3,
     low_resource=False,
     system_path="prompts/system.txt",
@@ -125,13 +151,14 @@ model = dict(
     role=("USER", "ASSISTANT"),
     add_scene_token=True,
     add_img_token=True,
-    obj_norm_scale=200,
-    scene_norm_scale=50,
-    grad_scale=1,
     use_lora=True,
     train_emb=True,
     train_img_proj=False,
-    no_obj=False
+    no_obj=False,
+    max_obj_num=200,
+    bidirection=False,
+    add_pos_emb=False,
+    feat_fusion=False
 )
 
 lora = dict(
@@ -145,7 +172,7 @@ lora = dict(
       "down_proj"
     ],
     lora_r=64,
-    lora_alpha=16, 
+    lora_alpha=16,
     lora_dropout=0.05
 )
 
@@ -159,8 +186,8 @@ optimizer = dict(
     # use a different lr for some modules, e.g., larger lr for new modules
     different_lr=dict(
         enable=False,
-        module_names=["module.object_img_proj"],
-        lr=[5e-7],
+        module_names=["model.embed_tokens"],
+        lr=[5e-4],
         wd=[0.02]
     ),
 )

@@ -43,29 +43,41 @@ for split in ["train"]:
     annos = [anno for anno in raw_annos if anno['scene_id'] in scene_lists[split]]
     new_annos = []
 
-    instance_attribute_file = f"annotations/scannet_{segmentor}_{split}_attributes{version}.pt"
-    scannet_attribute_file = f"annotations/scannet_{split}_attributes.pt"
-
-    instance_attrs = torch.load(instance_attribute_file)
-    scannet_attrs = torch.load(scannet_attribute_file)
+    if segmentor == 'deva':
+        seg_gt_ious = torch.load(f"annotations/scannet_{segmentor}_seg_gt_ious.pt", map_location='cpu')
+    else:
+        instance_attribute_file = f"annotations/scannet_{segmentor}_{split}_attributes{version}.pt"
+        scannet_attribute_file = f"annotations/scannet_{split}_attributes.pt"
+        instance_attrs = torch.load(instance_attribute_file, map_location='cpu')
+        scannet_attrs = torch.load(scannet_attribute_file, map_location='cpu')
 
     for anno in tqdm(annos):
         scene_id = anno['scene_id']
         obj_id = anno['obj_id']
-        if scene_id not in instance_attrs:
-            continue
-        instance_locs = instance_attrs[scene_id]['locs']
-        scannet_locs = scannet_attrs[scene_id]['locs']
-        max_iou, max_id = -1, -1
-        for pred_id in range(instance_locs.shape[0]):
-            pred_locs = instance_locs[pred_id].tolist()
-            gt_locs = scannet_locs[obj_id].tolist()
-            pred_corners = construct_bbox_corners(pred_locs[:3], pred_locs[3:])
-            gt_corners = construct_bbox_corners(gt_locs[:3], gt_locs[3:])
-            iou = box3d_iou(pred_corners, gt_corners)
-            if iou > max_iou:
-                max_iou = iou
-                max_id = pred_id
+        if segmentor == 'deva':
+            if scene_id not in seg_gt_ious:
+                continue
+            seg_gt_iou = seg_gt_ious[scene_id]
+            if obj_id >= seg_gt_iou.shape[1]:
+                continue
+            max_iou, max_id = seg_gt_iou[:, obj_id].max(0)
+            max_iou = float(max_iou)
+            max_id = int(max_id)
+        else:
+            if scene_id not in instance_attrs:
+                continue
+            instance_locs = instance_attrs[scene_id]['locs']
+            scannet_locs = scannet_attrs[scene_id]['locs']
+            max_iou, max_id = -1, -1
+            for pred_id in range(instance_locs.shape[0]):
+                pred_locs = instance_locs[pred_id].tolist()
+                gt_locs = scannet_locs[obj_id].tolist()
+                pred_corners = construct_bbox_corners(pred_locs[:3], pred_locs[3:])
+                gt_corners = construct_bbox_corners(gt_locs[:3], gt_locs[3:])
+                iou = box3d_iou(pred_corners, gt_corners)
+                if iou > max_iou:
+                    max_iou = iou
+                    max_id = pred_id
         prompt = random.choice(nr3d_caption_prompt).replace('<id>', f"<OBJ{max_id:03}>")
         if split == 'train':
             if max_iou >= args.train_iou_thres:

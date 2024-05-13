@@ -17,16 +17,15 @@ logger = logging.getLogger(__name__)
 
 class TrainDataset(BaseDataset):
 
+    cached_feats = {}
+
     def __init__(self, ann_list, config, **kwargs):
         super().__init__()
         self.feat_dim = config.model.input_dim
         self.img_feat_dim = config.model.img_input_dim
+        self.max_obj_num = config.model.max_obj_num
+
         feat_file, img_feat_file, attribute_file, anno_file = ann_list[:4]
-        self.feats = torch.load(feat_file, map_location='cpu')
-        if img_feat_file is not None and os.path.exists(img_feat_file):
-            self.img_feats = torch.load(img_feat_file, map_location='cpu')
-        else:
-            self.img_feats = None
         self.attributes = torch.load(attribute_file, map_location='cpu') if attribute_file is not None else None
         self.anno = json.load(open(anno_file, 'r'))
 
@@ -34,11 +33,24 @@ class TrainDataset(BaseDataset):
             sample_ratio = ann_list[-1]
             if sample_ratio < 1:
                 self.anno = random.sample(self.anno, int(sample_ratio * len(self.anno)))
-        if self.attributes is None:
-            self.scene_feats = self.feats
-            self.scene_img_feats = self.scene_masks = None
+        
+        if feat_file in TrainDataset.cached_feats and img_feat_file in TrainDataset.cached_feats:
+            self.scene_feats, self.scene_masks = TrainDataset.cached_feats[feat_file]
+            self.scene_img_feats = TrainDataset.cached_feats[img_feat_file]
         else:
-            self.scene_feats, self.scene_img_feats, self.scene_masks = self.prepare_scene_features()
+            self.feats = torch.load(feat_file, map_location='cpu')
+            if img_feat_file is not None and os.path.exists(img_feat_file):
+                self.img_feats = torch.load(img_feat_file, map_location='cpu')
+            else:
+                self.img_feats = None
+            if self.attributes is None:
+                self.scene_feats = self.feats
+                self.scene_img_feats = self.scene_masks = None
+            else:
+                self.scene_feats, self.scene_img_feats, self.scene_masks = self.prepare_scene_features()
+            TrainDataset.cached_feats[feat_file] = (self.scene_feats, self.scene_masks)
+            TrainDataset.cached_feats[img_feat_file] = self.scene_img_feats
+
 
     def __len__(self):
         return len(self.anno)
@@ -50,7 +62,7 @@ class TrainDataset(BaseDataset):
         if "obj_id" in self.anno[index]:
             obj_id = int(self.anno[index]["obj_id"])
         else:
-            obj_id = random.randint(0, 199)
+            obj_id = random.randint(0, self.max_obj_num - 1)
         if 'prompt' not in self.anno[index]:
             question = random.choice(obj_caption_wid_prompt).replace('<id>', f"<OBJ{obj_id:03}>")
         else:

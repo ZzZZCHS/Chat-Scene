@@ -224,6 +224,10 @@ def calc_scan2cap_score(preds, tokenizer, scorers, config=None):
 
 
 def calc_scanqa_score(preds, tokenizer, scorers, config=None):
+    with open(f"annotations/scanqa/ScanQA_v1.0_val.json", "r") as f:
+        annos = json.load(f)
+    outputs = []
+    qset = set()
     val_scores = {}
     tmp_preds = {}
     tmp_targets = {}
@@ -237,13 +241,33 @@ def calc_scanqa_score(preds, tokenizer, scorers, config=None):
                 pred = pred[:-1]
             pred = pred[0].lower() + pred[1:]
         pred = clean_answer(pred)
-        ref_captions = [clean_answer(caption) for caption in output['ref_captions']]
+        ref_captions = [caption for caption in output['ref_captions']]
         tmp_acc, tmp_refined_acc = answer_match(pred, ref_captions)
         acc += tmp_acc
         refined_acc += tmp_refined_acc
         tmp_preds[item_id] = [{'caption': pred}]
         ref_captions = [p.replace("\n", " ").strip() for p in ref_captions]
         tmp_targets[item_id] = [{'caption': caption} for caption in ref_captions]
+
+    #     ori_question = output['prompt'].split(' Answer the question using a single word or phrase.')[0]
+    #     flag = 0
+    #     for anno in annos:
+    #         if anno['scene_id'] == output['scene_id'] and anno['question'] == ori_question:
+    #             flag = 1
+    #             outputs.append({
+    #                 'scene_id': anno['scene_id'],
+    #                 'question_id': anno['question_id'],
+    #                 'answer_top10': [pred] * 10,
+    #                 'bbox': []
+    #             })
+    #             qset.add(anno['question_id'])
+    #             break
+    #     if flag == 0:
+    #         breakpoint()
+    # print(len(annos))
+    # print(len(qset))
+    # print(len(outputs))
+    json.dump(outputs, open('scanqa_val.json', 'w'), indent=4)
     tmp_preds = tokenizer.tokenize(tmp_preds)
     tmp_targets = tokenizer.tokenize(tmp_targets)
     acc = acc / len(preds)

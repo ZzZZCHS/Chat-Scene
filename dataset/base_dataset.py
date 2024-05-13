@@ -23,6 +23,7 @@ class BaseDataset(Dataset):
         self.scene_masks = None
         self.feat_dim = 1024
         self.img_feat_dim = 1024
+        self.max_obj_num = 100
 
     def __getitem__(self, index):
         raise NotImplementedError
@@ -58,10 +59,10 @@ class BaseDataset(Dataset):
                     scene_img_feat.append(torch.zeros(self.img_feat_dim))
                 else:
                     scene_img_feat.append(self.img_feats[item_id].float())
-                if scene_feat[-1] is None or any(x in obj_labels[_id] for x in unwanted_words):
-                    scene_mask.append(0)
-                else:
-                    scene_mask.append(1)
+                # if scene_feat[-1] is None or any(x in obj_labels[_id] for x in unwanted_words):
+                #     scene_mask.append(0)
+                # else:
+                scene_mask.append(1)
             scene_feat = torch.stack(scene_feat, dim=0)
             scene_img_feat = torch.stack(scene_img_feat, dim=0)
             scene_mask = torch.tensor(scene_mask, dtype=torch.int)
@@ -83,12 +84,13 @@ class BaseDataset(Dataset):
             scene_feat = scene_feat.unsqueeze(0)
         scene_img_feat = self.scene_img_feats[scene_id] if self.scene_img_feats is not None else torch.zeros((scene_feat.shape[0], self.img_feat_dim))
         scene_mask = self.scene_masks[scene_id] if self.scene_masks is not None else torch.ones(scene_feat.shape[0], dtype=torch.int)
-        assigned_ids = torch.randperm(200)[:len(scene_locs)]
-        # assigned_ids = torch.randperm(len(scene_locs))
+        # assigned_ids = torch.randperm(self.max_obj_num)[:len(scene_locs)]
+        assigned_ids = torch.randperm(len(scene_locs))
         return scene_id, scene_feat, scene_img_feat, scene_mask, scene_locs, assigned_ids
     
 
-def update_caption(caption, new_ids):
+def update_caption(caption, assigned_ids):
+    new_ids = {int(assigned_id): i for i, assigned_id in enumerate(assigned_ids)}
     id_format = "<OBJ\\d{3}>"
     for match in re.finditer(id_format, caption):
         idx = match.start()
@@ -98,23 +100,23 @@ def update_caption(caption, new_ids):
     return caption
 
 
-def recover_caption(caption, new_ids):
-    old_ids = {new_id: i for i, new_id in enumerate(new_ids)}
+def recover_caption(caption, assigned_ids):
     id_format = "<OBJ\\d{3}>"
     for match in re.finditer(id_format, caption):
         idx = match.start()
         new_id = int(caption[idx+4:idx+7])
         try:
-            old_id = int(old_ids[new_id])
+            old_id = int(assigned_ids[new_id])
         except:
-            old_id = random.randint(0, len(new_ids)-1)
+            old_id = random.randint(0, len(assigned_ids)-1)
         caption = caption[:idx+4] + f"{old_id:03}" + caption[idx+7:]
     return caption
 
 
 if __name__ == "__main__":
     caption = "<OBJ001> <OBJ002>"
-    assigned_ids = [1, 2, 3]
+    assigned_ids = torch.randperm(5)
+    print(assigned_ids)
     caption = update_caption(caption, assigned_ids)
     print(caption)
     caption = recover_caption(caption, assigned_ids)

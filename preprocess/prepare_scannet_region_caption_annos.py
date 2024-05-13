@@ -62,7 +62,12 @@ def extract_ids(caption):
     return id_list
 
 
-def find_match_in_pred(gt_id, instance_locs, scannet_locs):
+def find_match_in_pred(gt_id, instance_locs=None, scannet_locs=None, seg_gt_iou=None):
+    if seg_gt_iou is not None:
+        if gt_id >= seg_gt_iou.shape[1]:
+            return -1, -1
+        max_iou, max_id = seg_gt_iou[:, gt_id].max(0)
+        return int(max_id), float(max_iou)
     max_iou, max_id = -1, -1
     instance_num = instance_locs.shape[0]
     for pred_id in range(instance_num):
@@ -92,32 +97,50 @@ region_captions = json.load(open('annotations/step2_captions_by_scene_v2_anchor.
 for split in ['train']:
     scan_list = [x.strip() for x in open(f"annotations/scannet/scannetv2_{split}.txt").readlines()]
     new_annos = []
-    instance_attribute_file = f"annotations/scannet_{segmentor}_{split}_attributes{version}.pt"
-    scannet_attribute_file = f"annotations/scannet_{split}_attributes.pt"
 
-    instance_attrs = torch.load(instance_attribute_file)
-    scannet_attrs = torch.load(scannet_attribute_file)
+    if segmentor == 'deva':
+        seg_gt_ious = torch.load(f"annotations/scannet_{segmentor}_seg_gt_ious.pt", map_location='cpu')
+    else:
+        instance_attribute_file = f"annotations/scannet_{segmentor}_{split}_attributes{version}.pt"
+        scannet_attribute_file = f"annotations/scannet_{split}_attributes.pt"
+        instance_attrs = torch.load(instance_attribute_file, map_location='cpu')
+        scannet_attrs = torch.load(scannet_attribute_file, map_location='cpu')
 
     for scene_id in tqdm(scan_list):
-        if scene_id not in region_captions or scene_id not in instance_attrs:
+        if scene_id not in region_captions:
             continue
-        instance_locs = instance_attrs[scene_id]["locs"]
-        scannet_locs = scannet_attrs[scene_id]["locs"]
+        if segmentor == 'deva':
+            if scene_id not in seg_gt_ious:
+                continue
+            seg_gt_iou = seg_gt_ious[scene_id]
+            gt_num = seg_gt_iou.shape[1]
+        else:
+            if scene_id not in instance_attrs:
+                continue
+            instance_locs = instance_attrs[scene_id]["locs"]
+            scannet_locs = scannet_attrs[scene_id]["locs"]
+            gt_num = len(scannet_locs)
         for region in region_captions[scene_id]:
             anchor_id = region['anchor_id']
-            if anchor_id >= scannet_locs.shape[0]:
+            if anchor_id >= gt_num:
                 continue
-            pred_anchor_id, pred_anchor_iou = find_match_in_pred(anchor_id, instance_locs, scannet_locs)
+            if segmentor == 'deva':
+                pred_anchor_id, pred_anchor_iou = find_match_in_pred(anchor_id, seg_gt_iou=seg_gt_iou)
+            else:
+                pred_anchor_id, pred_anchor_iou = find_match_in_pred(anchor_id, instance_locs, scannet_locs)
             if pred_anchor_iou < args.train_iou_thres:
                 continue
             positive = region['positive']
             new_positive = {}
             flag = 1
             for k, v in positive.items():
-                if int(k) >= scannet_locs.shape[0]:
+                if int(k) >= gt_num:
                     flag = 0
                     break
-                new_k, new_iou = find_match_in_pred(int(k), instance_locs, scannet_locs)
+                if segmentor == 'deva':
+                    new_k, new_iou = find_match_in_pred(int(k), seg_gt_iou=seg_gt_iou)
+                else:
+                    new_k, new_iou = find_match_in_pred(int(k), instance_locs, scannet_locs)
                 if new_iou < args.train_iou_thres:
                     flag = 0
                     break
@@ -143,5 +166,5 @@ for split in ['train']:
     print(f"Split: {split}")
     print(len(new_annos))
 
-    with open(f"annotations/scannet_{segmentor}_{split}_region_caption{version}.json", "w") as f:
+    with open(f"annotations/scannet_region_caption_{segmentor}_{split}{version}.json", "w") as f:
         json.dump(new_annos, f, indent=4)

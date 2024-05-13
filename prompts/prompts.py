@@ -62,7 +62,7 @@ region_caption_prompt = [
     "Detail the sector that encompasses {}."
 ]
 
-scanrefer_prompt = [
+grounding_prompt = [
     "Share the ID of the object that best fits the description \"<description>\".",
     "Kindly provide the ID of the object that closely matches the description \"<description>\".",
     "What is the ID of the object that aligns with the description \"<description>\"?",
@@ -72,6 +72,7 @@ scanrefer_prompt = [
     "Share the ID of the object that best corresponds to the description \"<description>\".",
     "Identify the ID of the object that closely aligns with the description \"<description>\".",
     "What is the ID of the object that matches the description \"<description>\"?"
+    # "According to the given description, \"<description>,\" please provide the ID of the object that closely matches this description."
 ]
 
 scan2cap_prompt = [

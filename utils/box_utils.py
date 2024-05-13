@@ -60,17 +60,3 @@ def construct_bbox_corners(center, box_size):
     corners_3d = np.transpose(corners_3d)
 
     return corners_3d
-
-
-def construct_bbox_corners(center, box_size):
-    sx, sy, sz = box_size
-    x_corners = [sx / 2, sx / 2, -sx / 2, -sx / 2, sx / 2, sx / 2, -sx / 2, -sx / 2]
-    y_corners = [sy / 2, -sy / 2, -sy / 2, sy / 2, sy / 2, -sy / 2, -sy / 2, sy / 2]
-    z_corners = [sz / 2, sz / 2, sz / 2, sz / 2, -sz / 2, -sz / 2, -sz / 2, -sz / 2]
-    corners_3d = np.vstack([x_corners, y_corners, z_corners])
-    corners_3d[0, :] = corners_3d[0, :] + center[0]
-    corners_3d[1, :] = corners_3d[1, :] + center[1]
-    corners_3d[2, :] = corners_3d[2, :] + center[2]
-    corners_3d = np.transpose(corners_3d)
-
-    return corners_3d

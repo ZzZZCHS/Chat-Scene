@@ -147,58 +147,71 @@ def main():
 
     num_workers = args.num_workers
 
-    id2class = {}
-    with open(args.class_label_file, "r") as f:
-        csvreader = csv.reader(f, delimiter='\t')
-        csvreader.__next__()
-        for line in csvreader:
-            id2class[line[0]] = line[2]
+    # id2class = {}
+    # with open(args.class_label_file, "r") as f:
+    #     csvreader = csv.reader(f, delimiter='\t')
+    #     csvreader.__next__()
+    #     for line in csvreader:
+    #         id2class[line[0]] = line[2]
     
-    if args.segment_dir:
-        tmp_dir = os.path.join(args.segment_dir, 'mask3d_inst_seg')
-        if not os.path.exists(tmp_dir):
-            os.mkdir(tmp_dir)
-        params = []
-        for split in ["train", "val"]:
-            cur_dir = os.path.join(args.segment_dir, split)
-            for file_path in glob.glob(os.path.join(cur_dir, "*.txt")):
-                params.append((cur_dir, file_path))
-        fn = partial(
-            process_one_scene,
-            tmp_dir=tmp_dir,
-            id2class=id2class
-        )
-        if args.parallel:
-            mmengine.utils.track_parallel_progress(fn, params, num_workers)
-        else:
-            for param in tqdm(params):
-                fn(param)
-                print(len(ids))
-    else:
-        tmp_dir = args.inst_seg_dir
+    # if args.segment_dir:
+    #     tmp_dir = os.path.join(args.segment_dir, 'mask3d_inst_seg')
+    #     if not os.path.exists(tmp_dir):
+    #         os.mkdir(tmp_dir)
+    #     params = []
+    #     for split in ["train", "val"]:
+    #         cur_dir = os.path.join(args.segment_dir, split)
+    #         for file_path in glob.glob(os.path.join(cur_dir, "*.txt")):
+    #             params.append((cur_dir, file_path))
+    #     fn = partial(
+    #         process_one_scene,
+    #         tmp_dir=tmp_dir,
+    #         id2class=id2class
+    #     )
+    #     if args.parallel:
+    #         mmengine.utils.track_parallel_progress(fn, params, num_workers)
+    #     else:
+    #         for param in tqdm(params):
+    #             fn(param)
+    #             print(len(ids))
+    # else:
+    #     tmp_dir = args.inst_seg_dir
 
-    # for split in ['scans', 'scans_test']:
-    for split in ['scans']:
-        scannet_dir = os.path.join(args.scannet_dir, split)
+    # # for split in ['scans', 'scans_test']:
+    # for split in ['scans']:
+    #     scannet_dir = os.path.join(args.scannet_dir, split)
 
-        fn = partial(
-            process_per_scan,
-            scan_dir=scannet_dir,
-            out_dir=args.output_dir,
-            tmp_dir=tmp_dir,
-            apply_global_alignment=args.apply_global_alignment,
-            is_test='test' in split
-        )
+    #     fn = partial(
+    #         process_per_scan,
+    #         scan_dir=scannet_dir,
+    #         out_dir=args.output_dir,
+    #         tmp_dir=tmp_dir,
+    #         apply_global_alignment=args.apply_global_alignment,
+    #         is_test='test' in split
+    #     )
 
-        scan_ids = os.listdir(scannet_dir)
-        scan_ids.sort()
-        print(split, '%d scans' % (len(scan_ids)))
+    #     scan_ids = os.listdir(scannet_dir)
+    #     scan_ids.sort()
+    #     print(split, '%d scans' % (len(scan_ids)))
 
-        if args.parallel:
-            mmengine.utils.track_parallel_progress(fn, scan_ids, num_workers)
-        else:
-            for scan_id in scan_ids:
-                fn(scan_id)
+    #     if args.parallel:
+    #         mmengine.utils.track_parallel_progress(fn, scan_ids, num_workers)
+    #     else:
+    #         for scan_id in scan_ids:
+    #             fn(scan_id)
+
+    all_feats = {}
+    for split in ['train', 'val']:
+        cur_feat_dir = os.path.join(args.segment_dir, split, 'features')
+        for filename in tqdm(os.listdir(cur_feat_dir)):
+            if not filename.endswith('.pt'):
+                continue
+            scene_id = filename.split('.pt')[0]
+            tmp_feat = torch.load(os.path.join(cur_feat_dir, filename), map_location='cpu')
+            for i in range(tmp_feat.shape[1]):
+                breakpoint()
+                all_feats[f"{scene_id}_{i:02}"] = tmp_feat[0, i]
+    torch.save(all_feats, "annotations/scannet_mask3d_mask3d_feats.pt")
 
 
 if __name__ == '__main__':
