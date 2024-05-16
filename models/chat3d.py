@@ -278,11 +278,12 @@ class Chat3D(nn.Module):
             objid_embeds = objid_embeds.detach()
         selected_objid_embeds = objid_embeds[valid_ids]
         if self.feat_fusion:
-            object_list_embed = torch.zeros((selected_objid_embeds.shape[0], selected_objid_embeds.shape[1]), dtype=selected_objid_embeds.dtype, device=selected_objid_embeds.device)
+            object_list_embed = torch.zeros((selected_objid_embeds.shape[0] * 2, selected_objid_embeds.shape[1]), dtype=selected_objid_embeds.dtype, device=selected_objid_embeds.device)
+            object_list_embed[0::2, :] = selected_objid_embeds
             if not self.no_obj:
-                object_list_embed += embed_obj[assigned_ids]
+                object_list_embed[1::2, :] += embed_obj[assigned_ids]
             if self.add_img_token:
-                object_list_embed += embed_img[assigned_ids]
+                object_list_embed[1::2, :] += embed_img[assigned_ids]
         if self.no_obj:
             # if embed_img is None:
             object_list_embed = torch.zeros((selected_objid_embeds.shape[0] * 2, selected_objid_embeds.shape[1]), dtype=selected_objid_embeds.dtype, device=selected_objid_embeds.device)
@@ -414,13 +415,17 @@ class Chat3D(nn.Module):
                 st, ed = object_list_intervals[i]
                 causal_mask[i, :, st:ed, st:ed] = 1.0
             attention_mask = causal_mask
+        
+        # label_weights = torch.ones(self.llama_model.config.vocab_size, device=device)
+        # label_weights[self.objid_start_idx:self.objid_end_idx] = 10
 
         with self.maybe_autocast():
             outputs = self.llama_model(
                 inputs_embeds=input_embeds,
                 attention_mask=attention_mask,
                 return_dict=True,
-                labels=targets
+                labels=targets,
+                # label_weights=label_weights
             )
 
         return dict(
