@@ -38,7 +38,10 @@ class TrainDataset(BaseDataset):
             self.scene_feats, self.scene_masks = TrainDataset.cached_feats[feat_file]
             self.scene_img_feats = TrainDataset.cached_feats[img_feat_file]
         else:
-            self.feats = torch.load(feat_file, map_location='cpu')
+            if feat_file is not None and os.path.exists(feat_file):
+                self.feats = torch.load(feat_file, map_location='cpu')
+            else:
+                self.feats = None
             if img_feat_file is not None and os.path.exists(img_feat_file):
                 self.img_feats = torch.load(img_feat_file, map_location='cpu')
             else:

@@ -8,7 +8,7 @@ inst_seg_dir=""
 class_label_file="annotations/scannet/scannetv2-labels.combined.tsv"
 max_obj_num=150
 
-train_iou_thres=0.05
+train_iou_thres=0.01
 
 # processed_data_dir="/mnt/petrelfs/share_data/huanghaifeng/data/processed/scannet/mask3d_ins_data${version}"
 # processed_data_dir="/mnt/petrelfs/share_data/chenyilun/haifeng/mask3d_ins_data"
@@ -48,38 +48,38 @@ python preprocess/prepare_scanrefer_annos.py \
     --train_iou_thres "$train_iou_thres" \
     --max_obj_num "$max_obj_num"
 
-# python preprocess/prepare_scan2cap_annos.py \
-#     --segmentor "$segmentor" \
-#     --version "$version" \
-#     --train_iou_thres "$train_iou_thres" \
-#     --max_obj_num "$max_obj_num"
+python preprocess/prepare_scan2cap_annos.py \
+    --segmentor "$segmentor" \
+    --version "$version" \
+    --train_iou_thres "$train_iou_thres" \
+    --max_obj_num "$max_obj_num"
 
-# python preprocess/prepare_objalign_annos.py \
-#     --segmentor "$segmentor" \
-#     --version "$version" \
-#     --train_iou_thres "$train_iou_thres"
+python preprocess/prepare_objalign_annos.py \
+    --segmentor "$segmentor" \
+    --version "$version" \
+    --train_iou_thres "$train_iou_thres"
 
-# python preprocess/prepare_nr3dcaption_annos.py \
-#     --segmentor "$segmentor" \
-#     --version "$version" \
-#     --train_iou_thres "$train_iou_thres"
+python preprocess/prepare_nr3dcaption_annos.py \
+    --segmentor "$segmentor" \
+    --version "$version" \
+    --train_iou_thres "$train_iou_thres"
 
-# python preprocess/prepare_nr3d_annos.py \
-#     --segmentor "$segmentor" \
-#     --version "$version" \
-#     --train_iou_thres "$train_iou_thres" \
-#     --max_obj_num "$max_obj_num"
+python preprocess/prepare_nr3d_annos.py \
+    --segmentor "$segmentor" \
+    --version "$version" \
+    --train_iou_thres "$train_iou_thres" \
+    --max_obj_num "$max_obj_num"
 
-# python preprocess/prepare_sr3d_annos.py \
-#     --segmentor "$segmentor" \
-#     --version "$version" \
-#     --train_iou_thres "$train_iou_thres" \
-#     --max_obj_num "$max_obj_num"
+python preprocess/prepare_sr3d_annos.py \
+    --segmentor "$segmentor" \
+    --version "$version" \
+    --train_iou_thres "$train_iou_thres" \
+    --max_obj_num "$max_obj_num"
 
-# python preprocess/prepare_multi3dref_annos.py \
-#     --segmentor "$segmentor" \
-#     --version "$version" \
-#     --train_iou_thres "$train_iou_thres"
+python preprocess/prepare_multi3dref_annos.py \
+    --segmentor "$segmentor" \
+    --version "$version" \
+    --train_iou_thres "$train_iou_thres"
 
 # python preprocess/prepare_scanqa_annos.py
 

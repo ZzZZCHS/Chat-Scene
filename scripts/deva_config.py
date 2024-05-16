@@ -1,16 +1,16 @@
 # ========================= data ==========================
 anno_root = "annotations"  # annotation dir
-pc_encoder = "uni3d" # uni3d, clasp, dinov2
-segmentor = "mask3d" # mask3d, clasp, deva
+pc_encoder = "" # uni3d, clasp, dinov2
+segmentor = "deva" # mask3d, clasp, deva
 version = ""
 
 seg_feat_file = f"{anno_root}/scannet_{segmentor}_{pc_encoder}_feats.pt"
 # seg_img_feat_file = f"{anno_root}/scannet_img_mask3d_dinov2_features{version}.pt"
 seg_img_feat_file = f"{anno_root}/scannet_{segmentor}_videofeats{version}.pt"
 # seg_img_feat_file = None
-seg_train_attr_file = f"{anno_root}/scannet_{segmentor}_train_attributes{version}.pt"
-seg_val_attr_file = f"{anno_root}/scannet_{segmentor}_val_attributes{version}.pt"
-# seg_train_attr_file = seg_val_attr_file = f"{anno_root}/scannet_{segmentor}_attributes{version}.pt"
+# seg_train_attr_file = f"{anno_root}/scannet_{segmentor}_train_attributes{version}.pt"
+# seg_val_attr_file = f"{anno_root}/scannet_{segmentor}_val_attributes{version}.pt"
+seg_train_attr_file = seg_val_attr_file = f"{anno_root}/scannet_{segmentor}_attributes{version}.pt"
 
 train_tag = 'scanqa'
 val_tag = 'scanqa'
@@ -182,7 +182,7 @@ optimizer = dict(
     opt_betas=[0.9, 0.999],  # default
     weight_decay=0.02,
     scaler_enable=False,
-    max_grad_norm=5,  # requires a positive float, use -1 to disable
+    max_grad_norm=-1,  # requires a positive float, use -1 to disable
     # use a different lr for some modules, e.g., larger lr for new modules
     different_lr=dict(
         enable=False,

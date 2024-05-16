@@ -1165,7 +1165,8 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
         cache_position: Optional[torch.LongTensor] = None,
-        customized_mask: Optional[torch.Tensor] = None
+        customized_mask: Optional[torch.Tensor] = None,
+        label_weights: Optional[torch.Tensor] = None
     ) -> Union[Tuple, CausalLMOutputWithPast]:
         r"""
         Args:

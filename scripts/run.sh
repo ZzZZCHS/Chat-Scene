@@ -19,8 +19,9 @@ different_lr=False
 max_obj_num=100
 lora_r=16
 lora_alpha=8
-add_pos_emb=True
+add_pos_emb=False
 feat_fusion=False
+config=""
 
 # train_tag="scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#scannet_caption#scannet_region_caption#nr3d_caption"
 train_tag="scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#nr3d_caption"
@@ -38,7 +39,7 @@ else
     enable_wandb=True
     gpu_num=4
     do_save=True
-    other_info="r16alpha8_videofeats_addposboth"
+    other_info="r16alpha8_videofeats_maxgrad5"
 fi
 
 tag="${train_tag}__${val_tag}__${other_info}"
@@ -51,7 +52,7 @@ mkdir -p ${OUTPUT_DIR}
 
 srun --partition=mozi-S1 --gres=gpu:${gpu_num} --ntasks-per-node=${gpu_num} --kill-on-bad-exit --quotatype=reserved \
 python tasks/train.py \
-    $(dirname $0)/config.py \
+    "$(dirname $0)/${config}config.py" \
     output_dir "$OUTPUT_DIR" \
     scheduler.epochs "$epoch" \
     optimizer.lr "$lr" \
