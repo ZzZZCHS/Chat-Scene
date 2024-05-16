@@ -32,7 +32,10 @@ class BaseDataset(Dataset):
         raise NotImplementedError
     
     def prepare_scene_features(self):
-        scan_ids = set('_'.join(x.split('_')[:2]) for x in self.feats.keys())
+        if self.feats is not None:
+            scan_ids = set('_'.join(x.split('_')[:2]) for x in self.feats.keys())
+        else:
+            scan_ids = set('_'.join(x.split('_')[:2]) for x in self.img_feats.keys())
         scene_feats = {}
         scene_img_feats = {}
         scene_masks = {}
@@ -49,7 +52,7 @@ class BaseDataset(Dataset):
             scene_mask = []
             for _i, _id in enumerate(obj_ids):
                 item_id = '_'.join([scan_id, f'{_id:02}'])
-                if item_id not in self.feats:
+                if self.feats is None or item_id not in self.feats:
                     # scene_feat.append(torch.randn((self.feat_dim)))
                     scene_feat.append(torch.zeros(self.feat_dim))
                 else:

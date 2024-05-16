@@ -333,10 +333,10 @@ class Chat3D(nn.Module):
         proj_object_img_embed = self.object_img_proj(object_img_embed)
         if self.add_pos_emb:
             mins, maxs = self.get_min_max_coord(scene_locs[:, :, :3], scene_mask)
-            pos_embed = self.pos_embedding(scene_locs[:, :, :3], input_range=[mins, maxs])
+            pos_embed = self.pos_embedding(scene_locs[:, :, :3], input_range=[mins, maxs]) / 10
             proj_pos_embed = self.pos_proj(pos_embed)
-            proj_object_embed += proj_pos_embed
-            proj_object_img_embed += proj_pos_embed
+            proj_object_embed = proj_object_embed + proj_pos_embed
+            proj_object_img_embed = proj_object_img_embed + proj_pos_embed
 
         proj_scene_embed = None
         if self.add_scene_token:  # remember to change the evaluate 
@@ -440,10 +440,10 @@ class Chat3D(nn.Module):
         proj_object_img_embed = self.object_img_proj(object_img_embed)
         if self.add_pos_emb:
             mins, maxs = self.get_min_max_coord(scene_locs[:, :, :3], scene_mask)
-            pos_embed = self.pos_embedding(scene_locs[:, :, :3], input_range=[mins, maxs])
+            pos_embed = self.pos_embedding(scene_locs[:, :, :3], input_range=[mins, maxs]) / 10
             proj_pos_embed = self.pos_proj(pos_embed)
-            proj_object_embed += proj_pos_embed
-            proj_object_img_embed += proj_pos_embed
+            proj_object_embed = proj_object_embed + proj_pos_embed
+            proj_object_img_embed = proj_object_img_embed + proj_pos_embed
         if self.add_scene_token:
             # if self.add_img_token:
             #     object_embed = object_embed + object_img_embed
