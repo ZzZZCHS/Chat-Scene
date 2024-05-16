@@ -153,7 +153,7 @@ optimizer = dict(
     opt_betas=[0.9, 0.999],  # default
     weight_decay=0.02,
     scaler_enable=False,
-    max_grad_norm=-1,  # requires a positive float, use -1 to disable
+    max_grad_norm=1,  # requires a positive float, use -1 to disable
     # use a different lr for some modules, e.g., larger lr for new modules
     different_lr=dict(
         enable=False,
