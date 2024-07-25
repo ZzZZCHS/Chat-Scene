@@ -13,7 +13,7 @@ from scipy.optimize import linear_sum_assignment
 from utils.helper import clean_answer, answer_match, scanrefer_get_unique_multiple_lookup
 
 # default_instance_attr_file = "annotations/scannet_mask3d_val_attributes.pt"
-default_instance_attr_file = 'annotations/scannet_deva_attributes_new.pt'
+default_instance_attr_file = 'annotations/scannet_deva_attributes_old.pt'
 
 def calc_scanrefer_score(preds, config=None):
     instance_attribute_file = config.val_file_dict['scanrefer'][2] if config is not None else default_instance_attr_file
@@ -237,7 +237,8 @@ def calc_scanqa_score(preds, tokenizer, scorers, config=None):
                 pred = pred[:-1]
             pred = pred[0].lower() + pred[1:]
         pred = clean_answer(pred)
-        ref_captions = [clean_answer(caption) for caption in output['ref_captions']]
+        # ref_captions = [clean_answer(caption) for caption in output['ref_captions']]
+        ref_captions = output['ref_captions']
         tmp_acc, tmp_refined_acc = answer_match(pred, ref_captions)
         acc += tmp_acc
         refined_acc += tmp_refined_acc
@@ -316,16 +317,20 @@ if __name__ == '__main__':
     from pycocoevalcap.meteor.meteor import Meteor
     from pycocoevalcap.rouge.rouge import Rouge
     from pycocoevalcap.cider.cider import Cider
-    # from pycocoevalcap.spice.spice import Spice
+    from pycocoevalcap.spice.spice import Spice
     from pycocoevalcap.tokenizer.ptbtokenizer import PTBTokenizer
-    saved_preds = json.load(open('/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/20240504_213518_lr5e-6_ep3_scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#scannet_caption#scannet_region_caption#nr3d_caption__scanrefer#scan2cap#scanqa#multi3dref#sqa3d__mask3d_video/preds_epoch1_step3812_scanqa.json'))
+    saved_preds = json.load(open('/mnt/petrelfs/huanghaifeng/share_hw/Chat-3D-v2/outputs/20240512_015550_lr5e-6_ep3_scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#nr3d_caption__scanrefer#scan2cap#scanqa#multi3dref#sqa3d__v2.1_videofeat_r16alpha8/preds_epoch1_step3214_scanqa.json'))
     scorers = [
         (Bleu(4), ["Bleu_1", "Bleu_2", "Bleu_3", "Bleu_4"]),
         (Meteor(), "METEOR"),
         (Rouge(), "ROUGE_L"),
         (Cider(), "CIDEr"),
-        # (Spice(), "SPICE")
+        (Spice(), "SPICE")
     ]
     tokenizer = PTBTokenizer()
     val_scores = calc_scanqa_score(saved_preds, tokenizer=tokenizer, scorers=scorers)
     print(json.dumps(val_scores, indent=4))
+
+    # save_preds = json.load(open('/mnt/petrelfs/huanghaifeng/share_hw/Chat-3D-v2/outputs/20240505_235715_lr5e-6_ep3_scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#scannet_caption#scannet_region_caption#nr3d_caption__scanrefer#scan2cap#scanqa#multi3dref#sqa3d__deva/preds_epoch1_step3274_scanrefer.json'))
+    # val_scores = calc_scanrefer_score(save_preds)
+    # print(json.dumps(val_scores, indent=4))

@@ -64,6 +64,7 @@ class Chat3D(nn.Module):
         self.bidirection = config.model.bidirection
         self.add_pos_emb = config.model.add_pos_emb
         self.feat_fusion = config.model.feat_fusion
+        self.fuse_with_id = config.model.fuse_with_id
 
         self.debug = config.debug
         if not self.debug:
@@ -171,26 +172,24 @@ class Chat3D(nn.Module):
         self.pos_proj = nn.Sequential(
             nn.Linear(self.pos_dim, self.llama_dim)
         )
-        self.encoder_layer = nn.TransformerEncoderLayer(d_model=self.scene_dim, nhead=8, dim_feedforward=2048, dropout=0.05, norm_first=True, batch_first=True)
-        self.relation_module = nn.TransformerEncoder(self.encoder_layer, num_layers=config.model.encoder_num_layers)
-        self.scene_init_proj = nn.Sequential(
-            nn.Linear(self.input_dim, self.scene_dim)
-        )
-        self.scene_proj = nn.Sequential(
-            nn.Linear(self.scene_dim, self.llama_dim),
-            # nn.GELU(),
-            # nn.Linear(self.llama_dim, self.llama_dim)
-        )
+        # self.encoder_layer = nn.TransformerEncoderLayer(d_model=self.scene_dim, nhead=8, dim_feedforward=2048, dropout=0.05, norm_first=True, batch_first=True)
+        # self.relation_module = nn.TransformerEncoder(self.encoder_layer, num_layers=config.model.encoder_num_layers)
+        # self.scene_init_proj = nn.Sequential(
+        #     nn.Linear(self.input_dim, self.scene_dim)
+        # )
+        # self.scene_proj = nn.Sequential(
+        #     nn.Linear(self.scene_dim, self.llama_dim),
+        #     # nn.GELU(),
+        #     # nn.Linear(self.llama_dim, self.llama_dim)
+        # )
         
-        if not self.add_scene_token:
-            for p in self.relation_module.parameters():
-                p.requires_grad = False
-            for p in self.scene_init_proj.parameters():
-                p.requires_grad = False
-            for p in self.scene_proj.parameters():
-                p.requires_grad = False
-            for p in self.pos_proj.parameters():
-                p.requires_grad = False
+        # if not self.add_scene_token:
+        #     for p in self.relation_module.parameters():
+        #         p.requires_grad = False
+        #     for p in self.scene_init_proj.parameters():
+        #         p.requires_grad = False
+        #     for p in self.scene_proj.parameters():
+        #         p.requires_grad = False
                 
 
         with open(self.system_path, "r") as f:
@@ -277,6 +276,13 @@ class Chat3D(nn.Module):
         if not self.train_emb:
             objid_embeds = objid_embeds.detach()
         selected_objid_embeds = objid_embeds[valid_ids]
+        if self.fuse_with_id:
+            object_list_embed = selected_objid_embeds
+            if not self.no_obj:
+                object_list_embed += embed_obj[assigned_ids]
+            if self.add_img_token:
+                object_list_embed += embed_img[assigned_ids]
+            return object_list_embed
         if self.feat_fusion:
             object_list_embed = torch.zeros((selected_objid_embeds.shape[0] * 2, selected_objid_embeds.shape[1]), dtype=selected_objid_embeds.dtype, device=selected_objid_embeds.device)
             object_list_embed[0::2, :] = selected_objid_embeds
@@ -284,6 +290,7 @@ class Chat3D(nn.Module):
                 object_list_embed[1::2, :] += embed_obj[assigned_ids]
             if self.add_img_token:
                 object_list_embed[1::2, :] += embed_img[assigned_ids]
+            return object_list_embed
         if self.no_obj:
             # if embed_img is None:
             object_list_embed = torch.zeros((selected_objid_embeds.shape[0] * 2, selected_objid_embeds.shape[1]), dtype=selected_objid_embeds.dtype, device=selected_objid_embeds.device)
@@ -299,23 +306,27 @@ class Chat3D(nn.Module):
             object_list_embed = torch.zeros((selected_objid_embeds.shape[0] * 2, selected_objid_embeds.shape[1]), dtype=selected_objid_embeds.dtype, device=selected_objid_embeds.device)
             object_list_embed[0::2, :] = selected_objid_embeds
             object_list_embed[1::2, :] = embed_obj[assigned_ids]
+            return object_list_embed
             # object_list_embed = selected_objid_embeds + embed_obj[assigned_ids]
         if embed_img is None and embed_scene is not None:
             object_list_embed = torch.zeros((selected_objid_embeds.shape[0] * 3, selected_objid_embeds.shape[1]), dtype=selected_objid_embeds.dtype, device=selected_objid_embeds.device)
             object_list_embed[0::3, :] = selected_objid_embeds
             object_list_embed[1::3, :] = embed_obj[assigned_ids]
             object_list_embed[2::3, :] = embed_scene[assigned_ids]
+            return object_list_embed
         if embed_img is not None and embed_scene is None:
             object_list_embed = torch.zeros((selected_objid_embeds.shape[0] * 3, selected_objid_embeds.shape[1]), dtype=selected_objid_embeds.dtype, device=selected_objid_embeds.device)
             object_list_embed[0::3, :] = selected_objid_embeds
             object_list_embed[1::3, :] = embed_obj[assigned_ids]
             object_list_embed[2::3, :] = embed_img[assigned_ids]
+            return object_list_embed
         if embed_img is not None and embed_scene is not None:
             object_list_embed = torch.zeros((selected_objid_embeds.shape[0] * 4, selected_objid_embeds.shape[1]), dtype=selected_objid_embeds.dtype, device=selected_objid_embeds.device)
             object_list_embed[0::4, :] = selected_objid_embeds
             object_list_embed[1::4, :] = embed_obj[assigned_ids]
             object_list_embed[2::4, :] = embed_scene[assigned_ids]
             object_list_embed[3::4, :] = embed_img[assigned_ids]
+            return object_list_embed
         return object_list_embed
 
     def get_min_max_coord(self, xyz, scene_mask):

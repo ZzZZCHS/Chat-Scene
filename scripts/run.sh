@@ -14,19 +14,23 @@ add_img_token=True
 add_scene_token=False
 no_obj=False
 input_dim=1024 # 1024
-bidirection=False  # !!!
+bidirection=False
 different_lr=False
-max_obj_num=100
+max_obj_num=100  # !!!
 lora_r=16
-lora_alpha=8
+lora_alpha=32
 add_pos_emb=False
 feat_fusion=False
+fuse_with_id=False
 config=""
+max_grad_norm=0.1
+seed=42
 
 # train_tag="scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#scannet_caption#scannet_region_caption#nr3d_caption"
 train_tag="scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#nr3d_caption"
-val_tag="scanrefer#scan2cap#scanqa#multi3dref#sqa3d"
-# val_tag="scan2cap"
+# train_tag="scanrefer#multi3dref"
+val_tag="scanrefer#scan2cap#scanqa#multi3dref"
+# val_tag="sqa3d"
 
 evaluate=False
 debug=False
@@ -36,16 +40,17 @@ if [ $debug = "True" ]; then
     do_save=False
     other_info="debug"
 else
-    enable_wandb=True
+    enable_wandb=False
     gpu_num=4
     do_save=True
-    other_info="r16alpha8_videofeats_maxgrad5"
+    other_info="r16alpha32_videofeats_maxgrad1e-1_scalerenable"
 fi
 
 tag="${train_tag}__${val_tag}__${other_info}"
 
+# pretrained_path="/mnt/petrelfs/huanghaifeng/share_hw/Chat-3D-v2/outputs/20240517_142546_lr5e-6_ep3_scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#nr3d_caption__scanrefer#scan2cap#scanqa#multi3dref#sqa3d__r16alpha32_videofeats_maxgrad1e-1_fusefeat/ckpt_01_3214.pth"
+# pretrained_path="/mnt/petrelfs/huanghaifeng/share_hw/Chat-3D-v2/outputs/20240517_221942_lr5e-6_ep3_scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#nr3d_caption__scanrefer#scan2cap#scanqa#multi3dref#sqa3d__r16alpha32_maxgrad1e-1/ckpt_01_3214.pth"
 pretrained_path=""
-# pretrained_path="/mnt/petrelfs/huanghaifeng/share/Chat-3D-v2/outputs/20240508_023155_lr5e-6_ep3_scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#nr3d_caption__scanrefer#scan2cap#scanqa#multi3dref#sqa3d__v2.1_bidirection/ckpt_00_1607.pth"
 
 OUTPUT_DIR=outputs/"$(date +"%Y%m%d_%H%M%S")"_lr"$lr"_ep"$epoch"_"$tag"
 mkdir -p ${OUTPUT_DIR}
@@ -76,5 +81,10 @@ python tasks/train.py \
     optimizer.different_lr.enable "$different_lr" \
     model.max_obj_num "$max_obj_num" \
     lora.lora_r "$lora_r" \
+    lora.lora_alpha "$lora_alpha" \
     model.add_pos_emb "$add_pos_emb" \
-    model.feat_fusion "$feat_fusion"
+    model.feat_fusion "$feat_fusion" \
+    optimizer.max_grad_norm "$max_grad_norm" \
+    seed "$seed" \
+    model.fuse_with_id "$fuse_with_id"
+

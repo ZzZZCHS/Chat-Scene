@@ -5,11 +5,13 @@ segmentor = "mask3d" # mask3d, clasp, deva
 version = ""
 
 seg_feat_file = f"{anno_root}/scannet_{segmentor}_{pc_encoder}_feats.pt"
+seg_all_feat_file = f"{anno_root}/scannet_{segmentor}_{pc_encoder}_feats_all.pt"
 # seg_img_feat_file = f"{anno_root}/scannet_img_mask3d_dinov2_features{version}.pt"
 seg_img_feat_file = f"{anno_root}/scannet_{segmentor}_videofeats{version}.pt"
-# seg_img_feat_file = None
+# seg_img_feat_file = None #!!!
 seg_train_attr_file = f"{anno_root}/scannet_{segmentor}_train_attributes{version}.pt"
 seg_val_attr_file = f"{anno_root}/scannet_{segmentor}_val_attributes{version}.pt"
+seg_all_attr_file = f"{anno_root}/scannet_{segmentor}_all_attributes{version}.pt"
 # seg_train_attr_file = seg_val_attr_file = f"{anno_root}/scannet_{segmentor}_attributes{version}.pt"
 
 train_tag = 'scanqa'
@@ -116,10 +118,10 @@ val_file_dict = {
         f"{anno_root}/scan2cap_{segmentor}_val{version}.json"
     ],
     'sqa3d': [
-        seg_feat_file,
-        seg_img_feat_file,
-        seg_val_attr_file,
-        f"{anno_root}/sqa3d_val.json"
+        seg_all_feat_file,
+        None,
+        seg_all_attr_file,
+        f"{anno_root}/sqa3d_test.json"
     ],
     'multi3dref': [
         seg_feat_file,
@@ -158,7 +160,8 @@ model = dict(
     max_obj_num=200,
     bidirection=False,
     add_pos_emb=False,
-    feat_fusion=False
+    feat_fusion=False,
+    fuse_with_id=False
 )
 
 lora = dict(
