@@ -162,8 +162,8 @@ def main():
         if not os.path.exists(tmp_dir):
             os.mkdir(tmp_dir)
         params = []
-        # for split in ["train", "val"]:
-        for split in ["test"]:
+        for split in ["train", "val"]:
+        # for split in ["test"]:
             cur_dir = os.path.join(args.segment_dir, split)
             for file_path in glob.glob(os.path.join(cur_dir, "*.txt")):
                 params.append((cur_dir, file_path))
@@ -182,7 +182,7 @@ def main():
         tmp_dir = args.inst_seg_dir
 
     # for split in ['scans', 'scans_test']:
-    for split in ['scans_test']:
+    for split in ['scans']:
         scannet_dir = os.path.join(args.scannet_dir, split)
 
         fn = partial(

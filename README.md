@@ -1,53 +1,62 @@
 # Chat-Scene
 
-We build a multi-modal large language model for 3D scene understanding, which achieves state-of-the-art performance across 3D grounding, captioning, and QA tasks.
+We build a multi-modal large language model for 3D scene understanding, excelling in tasks such as 3D grounding, captioning, and question answering.
 
 
 ## News
 
-[2024.08] We released Chat-Scene, which can handle both 3D and 2D ego-centric video input for 3D scene understanding. The grounding performance on ScanRefer and Multi3DRefer has been largely improved. (Paper will be released soon.)
+[2024.08] We released Chat-Scene, capable of processing both 3D point clouds and 2D multi-view images for improved 3D scene understanding, leading to significant advancements in grounding and captioning performance. (Paper to be released soon.)
 
-[2024.04] We released a refined implementation (v2.1), which achieved better performance on grounding, captioning, and QA tasks. The code is in branch [v2.1](https://github.com/Chat-3D/Chat-3D-v2/tree/v2.1).
+[2024.04] We released a refined implementation (v2.1), which achieved better performance on grounding, captioning, and QA tasks. The code is available in branch [v2.1](https://github.com/Chat-3D/Chat-3D-v2/tree/v2.1).
 
-[2023.12] We released Chat-3D v2 [[paper](https://arxiv.org/abs/2312.08168)], which proposes using object identifiers for object referencing and grounding in 3D scenes. The original code is in branch [v2.0](https://github.com/Chat-3D/Chat-3D-v2/tree/v2.0).
+[2023.12] We released Chat-3D v2 [[paper](https://arxiv.org/abs/2312.08168)], introducing object identifiers for enhanced object referencing and grounding in 3D scenes. The original code is available in branch [v2.0](https://github.com/Chat-3D/Chat-3D-v2/tree/v2.0).
 
 ## 🔥 Chat-Scene vs Chat-3D v2
 
 - Performance Comparison
 
-  |      	| [ScanRefer](https://github.com/daveredrum/ScanRefer) 	|         	| [ScanQA](https://github.com/ATR-DBI/ScanQA) 	|        	|  [Scan2Cap](https://github.com/daveredrum/Scan2Cap) 	|            	| [Multi3dRefer](https://github.com/3dlg-hcvc/M3DRef-CLIP) 	|        	| [SQA3D](https://github.com/SilongYong/SQA3D) 	|
+  |      	| [ScanRefer](https://github.com/daveredrum/ScanRefer) 	|         	| [Multi3dRefer](https://github.com/3dlg-hcvc/M3DRef-CLIP) 	|        	|  [Scan2Cap](https://github.com/daveredrum/Scan2Cap) 	|            	| [ScanQA](https://github.com/ATR-DBI/ScanQA) 	|        	| [SQA3D](https://github.com/SilongYong/SQA3D) 	|
   | :----:	|:---------:	|:-------:	|:------:	|:------:	|:---------:	|:----------:	|:------------:	|:------:	|:-----:	|
-  |      	|  Acc@0.25 	| Acc@0.5 	|  CIDEr 	| B-4 	| CIDEr@0.5 	| B-4@0.5 	|    F1@0.25   	| F1@0.5 	|   EM  	|
-  | v2.0 	|    35.9   	|   30.4  	|  77.1  	|   7.3  	|    28.1   	|    15.5    	|       -      	|    -   	|   -   	|
-  | v2.1 	|   42.5    	|  38.4   	|  87.6  	|  14.0  	|   63.9    	|    31.8    	|     45.1     	|  41.6  	| 54.7  	|
-  | **Chat-Scene** | 54.6 | 49.4 |  |  |  |  |  |  |  |
+  |      	|  Acc@0.25 	| Acc@0.5 	|    F1@0.25   	| F1@0.5 	| CIDEr@0.5 	|   B-4@0.5 	|  CIDEr 	| B-4 	|   EM  	|
+  | v2.0 	|    35.9   	|   30.4  	|       -      	|    -   	|    28.1   	|    15.5    	|  77.1  	|   7.3  	|   -   	|
+  | v2.1 	|   42.5    	|  38.4   	|     45.1     	|  41.6  	|   63.9    	|    31.8    	|  87.6  	|  14.0  	| **54.7**  	|
+  | **Chat-Scene** | **55.5** | **49.6** | **57.1** | **52.4** | **77.1** | **36.3** | **87.7** | **14.3** | 54.6 |
 
-  \*The results of v2.1 and Chat-Scene are evaluated on single model **without finetuning on specific tasks**.
+  <small>\*The v2.1 and Chat-Scene results are based on single models **without task-specific finetuning**.
 
-  \*The results in the table are all on the validation set. (Test set results will be released soon.)
+  \*All results are from the validation set. (Test set results will be released soon.)</small>
 
 - Main Changes
   <details>
-  <summary> Changes of v2.1 </summary>
-  - LLM backbone: Vicuna v0 -> [Vicuna v1.5](https://github.com/lm-sys/FastChat/blob/main/docs/vicuna_weights_version.md) + LoRA finetuning
+  <summary> New features in Chat-Scene </summary>
 
-  - Training scheme: three-stage training -> one-stage joint training
+  - Introduce a 2D token for each object, with 2D representations extracted from multi-view images using [DINOv2](https://github.com/facebookresearch/dinov2).
 
-  - Segmentor: [PointGroup](https://github.com/dvlab-research/PointGroup) -> [Mask3D](https://github.com/JonasSchult/Mask3D)
+  - Enable processing of 2D ego-centric video using a tracking-based detector when 3D input is unavailable.
+
+  </details>
+
+  <details>
+  <summary> New features in v2.1 (Chat-Scene is built upon v2.1) </summary>
+
+  - LLM backbone: Vicuna v0 -> [Vicuna v1.5](https://github.com/lm-sys/FastChat/blob/main/docs/vicuna_weights_version.md) + LoRA.
+
+  - Training scheme: three-stage training -> one-stage joint training.
+
+  - Detector: [PointGroup](https://github.com/dvlab-research/PointGroup) -> [Mask3D](https://github.com/JonasSchult/Mask3D).
   
   - Code Optimization:
-    - batch size: 1 -> 32
-    - Simpler training and evaluating process
+    - batch size: 1 -> 32.
+    - Simplified training and evaluation processes.
   </details>
 
 ## 🔨 Preparation
 
 - Prepare the environment:
   
-  (Different from v2.0)
   ```shell
-  conda create -n chat-3d-v2 python=3.9.17
-  conda activate chat-3d-v2
+  conda create -n chat-scene python=3.9.17
+  conda activate chat-scene
   conda install pytorch==2.2.1 torchvision==0.17.1 torchaudio==2.2.1 pytorch-cuda=11.8 -c pytorch -c nvidia
   pip install -r requirements.txt
   ```
@@ -55,7 +64,7 @@ We build a multi-modal large language model for 3D scene understanding, which ac
 - Download LLM backbone:
   -  We use Vicuna-7B v1.5 in our experiments, which can be downloaded from [Hugging Face](https://huggingface.co/lmsys/vicuna-7b-v1.5).
 
-  - Change the `llama_model_path` in [config.py](./scripts/config.py) to the location of `vicuna-7b-v1.5`.
+  - Change the `llama_model_path` in [config.py](./scripts/config.py) to the path of `vicuna-7b-v1.5`.
   
 
 - Annotations and extracted features:
@@ -92,17 +101,10 @@ We build a multi-modal large language model for 3D scene understanding, which ac
     </details>
   - Run: `bash scripts/run.sh`
 
-  - Brief training info:
-
-    | Batch Size | GPU | VRAM Usage per GPU | Training Time | ckpt |
-    | :---: | :---: | :---: | :---: | :---: |
-    | 32 | 4 * A100 | ~ 70 GB | ~ 8 hours | [Google Drive](https://drive.google.com/file/d/1hv-N-p9tm6nhoe6tlbZANgxYIjuVvX1n/view?usp=sharing) |
-    | 1 | 1 * A100 | ~ 28 GB | ~ 3 days | - |
-
 
 - Inference
   
-  - Modify [run.sh](scripts/run.sh): (We provide the pretrained checkpoint in [Google Drive](https://drive.google.com/file/d/1hv-N-p9tm6nhoe6tlbZANgxYIjuVvX1n/view?usp=sharing))
+  - Modify [run.sh](scripts/run.sh): (We provide the pretrained checkpoint in [Google Drive](https://drive.google.com/file/d/1Ziz7Be9l6MEbn3Qmlyr9gv42C0iJQgAn/view?usp=sharing))
   
     ```python
     val_tag="scanrefer#scan2cap#scanqa#sqa3d#multi3dref"
@@ -139,9 +141,11 @@ If you have any questions or suggestions, feel free to drop us an email (`huangh
 
 Thanks to the open source of the following projects:
 
-LLMs:
+(Multi-modal) LLMs:
 [LLaMA](https://github.com/facebookresearch/llama), 
-[Vicuna](https://github.com/lm-sys/FastChat)
+[Vicuna](https://github.com/lm-sys/FastChat),
+[VideoChat](https://github.com/OpenGVLab/Ask-Anything/tree/main/video_chat), 
+[LEO](https://github.com/embodied-generalist/embodied-generalist)
 
 3D Datasets:
 [ScanNet](https://github.com/ScanNet/ScanNet), 
@@ -152,17 +156,17 @@ LLMs:
 [SQA3D](https://github.com/SilongYong/SQA3D), 
 [Multi3dRefer](https://github.com/3dlg-hcvc/M3DRef-CLIP)
 
-3D Segmentors:
+Detectors:
 [PointGroup](https://github.com/dvlab-research/PointGroup), 
-[Mask3D](https://github.com/JonasSchult/Mask3D)
+[Mask3D](https://github.com/JonasSchult/Mask3D),
+[DEVA](https://github.com/hkchengrex/Tracking-Anything-with-DEVA)
 
-3D Encoders:
+Representations:
 [ULIP](https://github.com/salesforce/ULIP), 
-[Uni3D](https://github.com/baaivision/Uni3D)
+[Uni3D](https://github.com/baaivision/Uni3D),
+[DINOv2](https://github.com/facebookresearch/dinov2)
 
-Multi-modal LLMs:
-[VideoChat](https://github.com/OpenGVLab/Ask-Anything/tree/main/video_chat), 
-[LEO](https://github.com/embodied-generalist/embodied-generalist)
+3D Models:
+[vil3dref](https://github.com/cshizhe/vil3dref),
+[OpenScene](https://github.com/pengsongyou/openscene)
 
-3D Expert Models:
-[vil3dref](https://github.com/cshizhe/vil3dref)

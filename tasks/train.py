@@ -394,8 +394,6 @@ def main(config):
     if not config.evaluate:
         logger.info("Start training")
         for epoch in range(start_epoch, config.scheduler.epochs):
-            if epoch == 2:
-                break
             global_step = train(
                 model,
                 model_without_ddp,

@@ -1,22 +1,20 @@
 # ========================= data ==========================
 anno_root = "annotations"  # annotation dir
-pc_encoder = "uni3d" # uni3d, clasp, dinov2
-segmentor = "mask3d" # mask3d, clasp, deva
+pc_encoder = "uni3d"
+segmentor = "mask3d"
 version = ""
 
 gt_feat_file = f"{anno_root}/scannet_gt_{pc_encoder}_feats.pt"
 seg_feat_file = f"{anno_root}/scannet_{segmentor}_{pc_encoder}_feats.pt"
 seg_all_feat_file = f"{anno_root}/scannet_{segmentor}_{pc_encoder}_feats_all.pt"
-# seg_img_feat_file = f"{anno_root}/scannet_img_mask3d_dinov2_features{version}.pt"
-gt_img_feat_file = f"{anno_root}/scannet_gt_videofeats{version}.pt"
-seg_img_feat_file = f"{anno_root}/scannet_{segmentor}_videofeats{version}.pt"
-seg_all_img_feat_file = f"{anno_root}/scannet_{segmentor}_videofeats_all{version}.pt"
-gt_train_attr_file = f"{anno_root}/scannet_train_attributes{version}.pt"
-gt_val_attr_file = f"{anno_root}/scannet_val_attributes{version}.pt"
-seg_train_attr_file = f"{anno_root}/scannet_{segmentor}_train_attributes{version}.pt"
-seg_val_attr_file = f"{anno_root}/scannet_{segmentor}_val_attributes{version}.pt"
-seg_all_attr_file = f"{anno_root}/scannet_{segmentor}_all_attributes{version}.pt"
-# seg_train_attr_file = seg_val_attr_file = f"{anno_root}/scannet_{segmentor}_attributes{version}.pt"
+gt_img_feat_file = f"{anno_root}/scannet_gt_videofeats.pt"
+seg_img_feat_file = f"{anno_root}/scannet_{segmentor}_videofeats.pt"
+seg_all_img_feat_file = f"{anno_root}/scannet_{segmentor}_videofeats_all.pt"
+gt_train_attr_file = f"{anno_root}/scannet_train_attributes.pt"
+gt_val_attr_file = f"{anno_root}/scannet_val_attributes.pt"
+seg_train_attr_file = f"{anno_root}/scannet_{segmentor}_train_attributes.pt"
+seg_val_attr_file = f"{anno_root}/scannet_{segmentor}_val_attributes.pt"
+seg_all_attr_file = f"{anno_root}/scannet_{segmentor}_all_attributes.pt"
 
 train_tag = 'scanqa'
 val_tag = 'scanqa'
@@ -170,9 +168,9 @@ val_file_dict = {
         f"{anno_root}/scan2cap_{segmentor}_val_location{version}.json"
     ],
     'sqa3d': [
-        seg_all_feat_file,
-        seg_all_img_feat_file,
-        seg_all_attr_file,
+        seg_feat_file,
+        seg_img_feat_file,
+        seg_val_attr_file,
         f"{anno_root}/sqa3d_test.json"
     ],
     'multi3dref': [
