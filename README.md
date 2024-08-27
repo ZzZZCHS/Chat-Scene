@@ -95,8 +95,6 @@ We build a multi-modal large language model for 3D scene understanding, excellin
       - `multi3dref`: [Multi3dRefer](https://github.com/3dlg-hcvc/M3DRef-CLIP) Dataset
       - `nr3d_caption`: A captioning dataset originated from [Nr3D](https://github.com/referit3d/referit3d).
       - `obj_align`: A dataset originated from ScanRefer to align the object identifiers with object tokens.
-    
-    - You can try different combination of training datasets or add costumized datasets.
 
     </details>
   - Run: `bash scripts/run.sh`
