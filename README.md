@@ -5,11 +5,11 @@ We build a multi-modal large language model for 3D scene understanding, excellin
 
 ## News
 
-[2024.08] We released Chat-Scene, capable of processing both 3D point clouds and 2D multi-view images for improved 3D scene understanding, leading to significant advancements in grounding and captioning performance. (Paper to be released soon.)
+**[2024.08]** 🔥 We released Chat-Scene, capable of processing both 3D point clouds and 2D multi-view images for improved 3D scene understanding, leading to significant advancements in grounding and captioning performance. (Paper to be released soon.)
 
-[2024.04] We released a refined implementation (v2.1), which achieved better performance on grounding, captioning, and QA tasks. The code is available in branch [v2.1](https://github.com/Chat-3D/Chat-3D-v2/tree/v2.1).
+**[2024.04]** We released a refined implementation (v2.1), which achieved better performance on grounding, captioning, and QA tasks. The code is available in branch [v2.1](https://github.com/Chat-3D/Chat-3D-v2/tree/v2.1).
 
-[2023.12] We released Chat-3D v2 [[paper](https://arxiv.org/abs/2312.08168)], introducing object identifiers for enhanced object referencing and grounding in 3D scenes. The original code is available in branch [v2.0](https://github.com/Chat-3D/Chat-3D-v2/tree/v2.0).
+**[2023.12]** We released Chat-3D v2 [[paper](https://arxiv.org/abs/2312.08168)], introducing object identifiers for enhanced object referencing and grounding in 3D scenes. The original code is available in branch [v2.0](https://github.com/Chat-3D/Chat-3D-v2/tree/v2.0).
 
 ## 🔥 Chat-Scene vs Chat-3D v2
 
