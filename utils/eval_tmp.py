@@ -90,6 +90,81 @@ def calc_scanrefer_score(preds, config=None):
     return val_scores
 
 
+def calc_nr3d_score(preds, config=None):
+    instance_attribute_file = config.val_file_dict['scanrefer'][2] if config is not None else default_instance_attr_file
+    scannet_attribute_file = "annotations/scannet_val_attributes.pt"
+
+    instance_attrs = torch.load(instance_attribute_file, map_location='cpu')
+    scannet_attrs = torch.load(scannet_attribute_file, map_location='cpu')
+
+    unique_multiple_lookup = scanrefer_get_unique_multiple_lookup()
+
+    iou25_acc = 0
+    iou50_acc = 0
+    unique_iou25_acc = 0
+    unique_iou50_acc = 0
+    unique_all = 0
+    multiple_iou25_acc = 0
+    multiple_iou50_acc = 0
+    multiple_all = 0
+
+    # count_list = [0] * 150
+    # iou25_acc_list = [0] * 150
+    # iou50_acc_list = [0] * 150
+    id_format = "<OBJ\\d{3}>"
+
+    for i, output in enumerate(preds):
+        scene_id = output["scene_id"]
+        obj_id = output["gt_id"]
+        instance_locs = instance_attrs[scene_id]["locs"]
+        scannet_locs = scannet_attrs[scene_id]["locs"]
+        unique_multiple = unique_multiple_lookup[scene_id][str(obj_id)]
+        if unique_multiple == 0:
+            unique_all += 1
+        else:
+            multiple_all += 1
+        pred = output["pred"]
+        instance_num = instance_locs.shape[0]
+        pred_id = 0
+        for match in re.finditer(id_format, pred):
+            idx = match.start()
+            cur_id = int(pred[idx+4:idx+7])
+            if cur_id < instance_num:
+                pred_id = cur_id
+                break
+        pred_locs = instance_locs[pred_id].tolist()
+        gt_locs = scannet_locs[obj_id].tolist()
+        pred_corners = construct_bbox_corners(pred_locs[:3], pred_locs[3:])
+        gt_corners = construct_bbox_corners(gt_locs[:3], gt_locs[3:])
+        iou = box3d_iou(pred_corners, gt_corners)
+        if iou >= 0.25:
+            iou25_acc += 1
+            if unique_multiple == 0:
+                unique_iou25_acc += 1
+            else:
+                multiple_iou25_acc += 1
+            # iou25_acc_list[scannet_locs.shape[0]] += 1
+        if iou >= 0.5:
+            iou50_acc += 1
+            if unique_multiple == 0:
+                unique_iou50_acc += 1
+            else:
+                multiple_iou50_acc += 1
+            # iou50_acc_list[scannet_locs.shape[0]] += 1
+        # count_list[scannet_locs.shape[0]] += 1
+
+    val_scores = {
+        '[nr3d] Acc@0.25': float(iou25_acc) / len(preds),
+        '[nr3d] Acc@0.50': float(iou50_acc) / len(preds),
+        '[nr3d] Unique Acc@0.25': float(unique_iou25_acc) / unique_all,
+        '[nr3d] Unique Acc@0.50': float(unique_iou50_acc) / unique_all,
+        '[nr3d] Multiple Acc@0.25': float(multiple_iou25_acc) / multiple_all,
+        '[nr3d] Multiple Acc@0.50': float(multiple_iou50_acc) / multiple_all
+    }
+
+    return val_scores
+
+
 def calc_multi3dref_score(preds, config=None):
     instance_attribute_file = config.val_file_dict['multi3dref'][2] if config is not None else default_instance_attr_file
     scannet_attribute_file = "annotations/scannet_val_attributes.pt"

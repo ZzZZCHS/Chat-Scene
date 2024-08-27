@@ -90,6 +90,57 @@ def calc_scanrefer_score(preds, config=None):
     return val_scores
 
 
+def calc_referit3d_score(preds, eval_name, config=None):
+    acc, easy_acc, hard_acc, view_dep_acc, view_indep_acc = 0, 0, 0, 0, 0
+    easy_num, hard_num, dep_num, indep_num = 0, 0, 0, 0
+    scannet_attribute_file = "annotations/scannet_val_attributes.pt"
+    scannet_attrs = torch.load(scannet_attribute_file, map_location='cpu')
+    
+    id_format = "<OBJ\\d{3}>"
+
+    for i, output in enumerate(preds):
+        scene_id = output["scene_id"]
+        gt_id = output["gt_id"]
+        pred = output["pred"]
+        easy_hard, dep_indep = output['type_info'].split('_')
+        gt_num = len(scannet_attrs[scene_id]['locs'])
+        pred_id = 0
+        for match in re.finditer(id_format, pred):
+            idx = match.start()
+            cur_id = int(pred[idx+4:idx+7])
+            if cur_id < gt_num:
+                pred_id = cur_id
+                break
+        if easy_hard == 'easy':
+            easy_num += 1
+        else:
+            hard_num += 1
+        if dep_indep == 'dep':
+            dep_num += 1
+        else:
+            indep_num += 1
+        if pred_id == gt_id:
+            acc += 1
+            if easy_hard == 'easy':
+                easy_acc += 1
+            else:
+                hard_acc += 1
+            if dep_indep == 'dep':
+                view_dep_acc += 1
+            else:
+                view_indep_acc += 1
+
+    val_scores = {
+        f'[{eval_name}] Overall Acc': float(acc) / len(preds),
+        f'[{eval_name}] Easy Acc': float(easy_acc) / easy_num,
+        f'[{eval_name}] Hard Acc': float(hard_acc) / hard_num,
+        f'[{eval_name}] View Dep Acc': float(view_dep_acc) / dep_num,
+        f'[{eval_name}] View Indep Acc': float(view_indep_acc) / indep_num
+    }
+
+    return val_scores
+
+
 def calc_multi3dref_score(preds, config=None):
     instance_attribute_file = config.val_file_dict['multi3dref'][2] if config is not None else default_instance_attr_file
     scannet_attribute_file = "annotations/scannet_val_attributes.pt"
@@ -312,25 +363,180 @@ def calc_sqa3d_score(preds, tokenizer, scorers, config=None):
     return val_scores
 
 
-if __name__ == '__main__':
-    from pycocoevalcap.bleu.bleu import Bleu
-    from pycocoevalcap.meteor.meteor import Meteor
-    from pycocoevalcap.rouge.rouge import Rouge
-    from pycocoevalcap.cider.cider import Cider
-    from pycocoevalcap.spice.spice import Spice
-    from pycocoevalcap.tokenizer.ptbtokenizer import PTBTokenizer
-    saved_preds = json.load(open('/mnt/petrelfs/huanghaifeng/share_hw/Chat-3D-v2/outputs/20240512_015550_lr5e-6_ep3_scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#nr3d_caption__scanrefer#scan2cap#scanqa#multi3dref#sqa3d__v2.1_videofeat_r16alpha8/preds_epoch1_step3214_scanqa.json'))
-    scorers = [
-        (Bleu(4), ["Bleu_1", "Bleu_2", "Bleu_3", "Bleu_4"]),
-        (Meteor(), "METEOR"),
-        (Rouge(), "ROUGE_L"),
-        (Cider(), "CIDEr"),
-        (Spice(), "SPICE")
-    ]
-    tokenizer = PTBTokenizer()
-    val_scores = calc_scanqa_score(saved_preds, tokenizer=tokenizer, scorers=scorers)
-    print(json.dumps(val_scores, indent=4))
+def extract_locs(loc_str):
+    loc_format = "<LOC\\d{3}>"
+    locs = []
+    for match in re.finditer(loc_format, loc_str):
+        idx = match.start()
+        loc_idx = int(loc_str[idx+4:idx+7])
+        loc_num = float(loc_idx - 500) / 100
+        locs.append(loc_num)
+    return locs
 
-    # save_preds = json.load(open('/mnt/petrelfs/huanghaifeng/share_hw/Chat-3D-v2/outputs/20240505_235715_lr5e-6_ep3_scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#scannet_caption#scannet_region_caption#nr3d_caption__scanrefer#scan2cap#scanqa#multi3dref#sqa3d__deva/preds_epoch1_step3274_scanrefer.json'))
-    # val_scores = calc_scanrefer_score(save_preds)
+def calc_scanrefer_location_score(preds, config=None):
+    instance_attribute_file = config.val_file_dict['scanrefer'][2] if config is not None else default_instance_attr_file
+    scannet_attribute_file = "annotations/scannet_val_attributes.pt"
+
+    instance_attrs = torch.load(instance_attribute_file, map_location='cpu')
+    scannet_attrs = torch.load(scannet_attribute_file, map_location='cpu')
+
+    unique_multiple_lookup = scanrefer_get_unique_multiple_lookup()
+
+    iou25_acc = 0
+    iou50_acc = 0
+    unique_iou25_acc = 0
+    unique_iou50_acc = 0
+    unique_all = 0
+    multiple_iou25_acc = 0
+    multiple_iou50_acc = 0
+    multiple_all = 0
+
+    # count_list = [0] * 150
+    # iou25_acc_list = [0] * 150
+    # iou50_acc_list = [0] * 150
+
+    for i, output in enumerate(preds):
+        scene_id = output["scene_id"]
+        obj_id = output["gt_id"]
+        instance_locs = instance_attrs[scene_id]["locs"]
+        scannet_locs = scannet_attrs[scene_id]["locs"]
+        unique_multiple = unique_multiple_lookup[scene_id][str(obj_id)]
+        if unique_multiple == 0:
+            unique_all += 1
+        else:
+            multiple_all += 1
+        pred = output["pred"]
+        pred_locs = extract_locs(pred.split('</LOCATION>')[0])
+        if len(pred_locs) == 6:
+            gt_locs = scannet_locs[obj_id].tolist()
+            pred_corners = construct_bbox_corners(pred_locs[:3], pred_locs[3:])
+            gt_corners = construct_bbox_corners(gt_locs[:3], gt_locs[3:])
+            iou = box3d_iou(pred_corners, gt_corners)
+        else:
+            iou = 0.
+        if iou >= 0.25:
+            iou25_acc += 1
+            if unique_multiple == 0:
+                unique_iou25_acc += 1
+            else:
+                multiple_iou25_acc += 1
+            # iou25_acc_list[scannet_locs.shape[0]] += 1
+        if iou >= 0.5:
+            iou50_acc += 1
+            if unique_multiple == 0:
+                unique_iou50_acc += 1
+            else:
+                multiple_iou50_acc += 1
+            # iou50_acc_list[scannet_locs.shape[0]] += 1
+        # count_list[scannet_locs.shape[0]] += 1
+
+    val_scores = {
+        '[scanrefer] Acc@0.25': float(iou25_acc) / len(preds),
+        '[scanrefer] Acc@0.50': float(iou50_acc) / len(preds),
+        '[scanrefer] Unique Acc@0.25': float(unique_iou25_acc) / unique_all,
+        '[scanrefer] Unique Acc@0.50': float(unique_iou50_acc) / unique_all,
+        '[scanrefer] Multiple Acc@0.25': float(multiple_iou25_acc) / multiple_all,
+        '[scanrefer] Multiple Acc@0.50': float(multiple_iou50_acc) / multiple_all
+    }
+
+    return val_scores
+
+
+def calc_multi3dref_location_score(preds, config=None):
+    instance_attribute_file = config.val_file_dict['multi3dref'][2] if config is not None else default_instance_attr_file
+    scannet_attribute_file = "annotations/scannet_val_attributes.pt"
+
+    instance_attrs = torch.load(instance_attribute_file, map_location='cpu')
+    scannet_attrs = torch.load(scannet_attribute_file, map_location='cpu')
+
+    evaluation_types = {"zt_w_d": 0, "zt_wo_d": 1, "st_w_d": 2, "st_wo_d": 3, "mt": 4}
+    eval_type_mask = np.empty(len(preds), dtype=np.uint8)
+    # iou_25_f1_scores = np.empty(len(preds), dtype=np.float32)
+    # iou_50_f1_scores = np.empty(len(preds), dtype=np.float32)
+    iou_25_f1_scores = defaultdict(list)
+    iou_50_f1_scores = defaultdict(list)
+
+    for i, pred in enumerate(preds):
+        scene_id = pred['scene_id']
+        obj_id = pred['gt_id']
+        gt_ids = pred['ref_captions']
+        pred_sentence = pred['pred']
+        instance_locs = instance_attrs[scene_id]["locs"]
+        scannet_locs = scannet_attrs[scene_id]["locs"]
+        instance_num = instance_locs.shape[0]
+        pred_ids = []
+        pred_locs_list = []
+        for tmp_str in pred_sentence.split('</LOCATION>')[:-1]:
+            tmp_locs = extract_locs(tmp_str)
+            if len(tmp_locs) == 6:
+                pred_locs_list.append(tmp_locs)
+        eval_type = pred['type_info']
+        eval_type_mask[i] = evaluation_types[eval_type]
+        iou_25_f1, iou_50_f1 = 0, 0
+        if eval_type in ['zt_wo_d', 'zt_w_d']:
+            if len(pred_locs_list) == 0:
+                iou_25_f1 = iou_50_f1 = 1
+            else:
+                iou_25_f1 = iou_50_f1 = 0
+        else:
+            pred_corners_list = []
+            gt_corners_list = []
+            for pred_locs in pred_locs_list:
+                pred_corners_list.append(construct_bbox_corners(pred_locs[:3], pred_locs[3:]))
+            for gt_id in gt_ids:
+                gt_locs = scannet_locs[gt_id].tolist()
+                gt_corners_list.append(construct_bbox_corners(gt_locs[:3], gt_locs[3:]))
+            square_matrix_len = max(len(pred_corners_list), len(gt_ids))
+            iou_matrix = np.zeros(shape=(square_matrix_len, square_matrix_len), dtype=np.float32)
+            for pred_idx, pred_corners in enumerate(pred_corners_list):
+                for gt_idx, gt_corners in enumerate(gt_corners_list):
+                    iou_matrix[pred_idx, gt_idx] = box3d_iou(pred_corners, gt_corners)
+            iou_25_tp = 0
+            iou_50_tp = 0
+            row_idx, col_idx = linear_sum_assignment(iou_matrix * -1)
+            for ii in range(len(pred_corners_list)):
+                iou = iou_matrix[row_idx[ii], col_idx[ii]]
+                if iou >= 0.25:
+                    iou_25_tp += 1
+                if iou >= 0.5:
+                    iou_50_tp += 1
+            iou_25_f1 = 2 * iou_25_tp / (len(pred_corners_list) + len(gt_ids))
+            iou_50_f1 = 2 * iou_50_tp / (len(pred_corners_list) + len(gt_ids))
+        iou_25_f1_scores['all'].append(iou_25_f1)
+        iou_50_f1_scores['all'].append(iou_50_f1)
+        iou_25_f1_scores[eval_type].append(iou_25_f1)
+        iou_50_f1_scores[eval_type].append(iou_50_f1)
+
+    val_scores = {}
+    for k in iou_25_f1_scores.keys():
+        val_scores[f"[multi3dref] {k} F1@0.25"] = np.mean(iou_25_f1_scores[k])
+        val_scores[f"[multi3dref] {k} F1@0.50"] = np.mean(iou_50_f1_scores[k])
+    return val_scores
+
+
+if __name__ == '__main__':
+    # from pycocoevalcap.bleu.bleu import Bleu
+    # from pycocoevalcap.meteor.meteor import Meteor
+    # from pycocoevalcap.rouge.rouge import Rouge
+    # from pycocoevalcap.cider.cider import Cider
+    # from pycocoevalcap.spice.spice import Spice
+    # from pycocoevalcap.tokenizer.ptbtokenizer import PTBTokenizer
+    # saved_preds = json.load(open('/mnt/petrelfs/huanghaifeng/share_hw/Chat-3D-v2/outputs/20240512_015550_lr5e-6_ep3_scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#nr3d_caption__scanrefer#scan2cap#scanqa#multi3dref#sqa3d__v2.1_videofeat_r16alpha8/preds_epoch1_step3214_scanqa.json'))
+    # scorers = [
+    #     (Bleu(4), ["Bleu_1", "Bleu_2", "Bleu_3", "Bleu_4"]),
+    #     (Meteor(), "METEOR"),
+    #     (Rouge(), "ROUGE_L"),
+    #     (Cider(), "CIDEr"),
+    #     (Spice(), "SPICE")
+    # ]
+    # tokenizer = PTBTokenizer()
+    # val_scores = calc_scanqa_score(saved_preds, tokenizer=tokenizer, scorers=scorers)
     # print(json.dumps(val_scores, indent=4))
+
+    # save_preds = json.load(open('/mnt/petrelfs/huanghaifeng/share_hw/Chat-3D-v2/outputs/20240806_165011_lr5e-6_ep3_scanrefer_location#scan2cap_location#scanqa#sqa3d#multi3dref_location__scanrefer_location#multi3dref_location#scan2cap_location#scanqa#sqa3d__use_location_token/preds_epoch0_step1293_scanrefer_location.json'))
+    # val_scores = calc_scanrefer_location_score(save_preds)
+    # print(json.dumps(val_scores, indent=4))
+
+    save_preds = json.load(open('/mnt/petrelfs/huanghaifeng/share_hw/Chat-3D-v2/outputs/20240806_182802_lr5e-6_ep3_scanrefer_location#scan2cap_location#scanqa#sqa3d#multi3dref_location__scanrefer_location#multi3dref_location#scan2cap_location#scanqa#sqa3d__use_location_token/preds_epoch1_step2586_multi3dref_location.json'))
+    val_scores = calc_multi3dref_location_score(save_preds)
+    print(json.dumps(val_scores, indent=4))

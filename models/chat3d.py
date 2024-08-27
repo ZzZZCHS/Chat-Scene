@@ -65,6 +65,7 @@ class Chat3D(nn.Module):
         self.add_pos_emb = config.model.add_pos_emb
         self.feat_fusion = config.model.feat_fusion
         self.fuse_with_id = config.model.fuse_with_id
+        self.use_location_token = config.model.use_location_token
 
         self.debug = config.debug
         if not self.debug:
@@ -139,7 +140,6 @@ class Chat3D(nn.Module):
                 self.llama_model.model.embed_tokens.weight.data = self.llama_model.model.embed_tokens.weight.data.float()
             
             self.llama_model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant":False})
-
             objid_tokens = []
             for i in range(self.max_obj_num):
                 objid_tokens.append(f"<OBJ{i:03}>")
@@ -147,6 +147,13 @@ class Chat3D(nn.Module):
             self.llama_tokenizer.add_tokens(objid_tokens, special_tokens=True)
             self.objid_end_idx = len(self.llama_tokenizer)
             self.llama_model.resize_token_embeddings(len(self.llama_tokenizer))
+            
+            # if self.use_location_token:
+            #     location_tokens = ["<LOCATION>", "</LOCATION>"]
+            #     for i in range(1000):
+            #         location_tokens.append(f"<LOC{i:03}>")
+            #     self.llama_tokenizer.add_tokens(location_tokens, special_tokens=True)
+            #     self.llama_model.resize_token_embeddings(len(self.llama_tokenizer))
 
             self.llama_dim = self.llama_model.config.hidden_size
             logger.info('Loading LLAMA Done')
@@ -276,6 +283,11 @@ class Chat3D(nn.Module):
         if not self.train_emb:
             objid_embeds = objid_embeds.detach()
         selected_objid_embeds = objid_embeds[valid_ids]
+        if self.use_location_token:
+            object_list_embed = torch.zeros((selected_objid_embeds.shape[0] * 2, selected_objid_embeds.shape[1]), dtype=selected_objid_embeds.dtype, device=selected_objid_embeds.device)
+            object_list_embed[0::2, :] += embed_obj[assigned_ids]
+            object_list_embed[1::2, :] += embed_img[assigned_ids]
+            return object_list_embed
         if self.fuse_with_id:
             object_list_embed = selected_objid_embeds
             if not self.no_obj:
@@ -369,7 +381,7 @@ class Chat3D(nn.Module):
         object_list_intervals = []
 
         for i, question in enumerate(questions):
-            prompt = f" {question} {self.role[1]}: "
+            prompt = f"{question} {self.role[1]}: "
             prompt_embed = self.get_text_emb(prompt, device=device).squeeze(0)
             object_list_embed = self.get_object_list_embed(
                 proj_object_embed[i], 

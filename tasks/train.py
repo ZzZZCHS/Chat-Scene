@@ -18,7 +18,7 @@ from utils.basic_utils import (MetricLogger, SmoothedValue, setup_seed)
 from utils.config_utils import setup_main
 from utils.distributed import get_rank, get_world_size, is_main_process
 from utils.logger import log_dict_to_wandb, setup_wandb
-from utils.eval import calc_scanrefer_score, clean_answer, calc_scan2cap_score, calc_scanqa_score, calc_sqa3d_score, calc_multi3dref_score
+from utils.eval import calc_scanrefer_score, clean_answer, calc_scan2cap_score, calc_scanqa_score, calc_sqa3d_score, calc_multi3dref_score, calc_referit3d_score, calc_scanrefer_location_score, calc_multi3dref_location_score
 
 from pycocoevalcap.bleu.bleu import Bleu
 from pycocoevalcap.meteor.meteor import Meteor
@@ -277,14 +277,20 @@ def evaluate(
             val_scores = calc_scanqa_score(save_preds, tokenizer, scorers, config)
         elif eval_name == 'scanrefer':
             val_scores = calc_scanrefer_score(save_preds, config)
-        elif eval_name == "scan2cap":
+        elif eval_name in ["scan2cap", "scan2cap_location"]:
             val_scores = calc_scan2cap_score(save_preds, tokenizer, scorers, config)
         elif eval_name == "sqa3d":
             val_scores = calc_sqa3d_score(save_preds, tokenizer, scorers, config)
         elif eval_name == 'multi3dref':
             val_scores = calc_multi3dref_score(save_preds, config)
-        else:
-            raise NotImplementedError
+        elif eval_name in ['nr3d', 'sr3d']:
+            val_scores = calc_referit3d_score(save_preds, eval_name, config)
+        elif eval_name == "scanrefer_location":
+            val_scores = calc_scanrefer_location_score(save_preds, config)
+        elif eval_name == "multi3dref_location":
+            val_score = calc_multi3dref_location_score(save_preds, config)
+        # else:
+        #     raise NotImplementedError
             # tmp_preds = {}
             # tmp_targets = {}
             # acc = 0
@@ -388,7 +394,7 @@ def main(config):
     if not config.evaluate:
         logger.info("Start training")
         for epoch in range(start_epoch, config.scheduler.epochs):
-            if epoch == config.scheduler.epochs - 1:
+            if epoch == 2:
                 break
             global_step = train(
                 model,

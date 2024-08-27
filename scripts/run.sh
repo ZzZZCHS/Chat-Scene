@@ -16,23 +16,23 @@ no_obj=False
 input_dim=1024 # 1024
 bidirection=False
 different_lr=False
-max_obj_num=100  # !!!
+max_obj_num=100
 lora_r=16
-lora_alpha=32
+lora_alpha=16
 add_pos_emb=False
 feat_fusion=False
 fuse_with_id=False
 config=""
-max_grad_norm=0.1
+max_grad_norm=0.01
 seed=42
+use_location_token=False
 
-# train_tag="scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#scannet_caption#scannet_region_caption#nr3d_caption"
-train_tag="scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#nr3d_caption"
-# train_tag="scanrefer#multi3dref"
-val_tag="scanrefer#scan2cap#scanqa#multi3dref"
-# val_tag="sqa3d"
+llama_model_path="llm/vicuna-7b-v1.5"
 
-evaluate=False
+train_tag="scanrefer#obj_align#nr3d_caption#scan2cap#scanqa#sqa3d#multi3dref"
+val_tag="sqa3d#scanrefer#scan2cap#scanqa#multi3dref"
+
+evaluate=True
 debug=False
 if [ $debug = "True" ]; then
     enable_wandb=False
@@ -43,14 +43,16 @@ else
     enable_wandb=False
     gpu_num=4
     do_save=True
-    other_info="r16alpha32_videofeats_maxgrad1e-1_scalerenable"
+    other_info="new_max1"
 fi
 
 tag="${train_tag}__${val_tag}__${other_info}"
 
 # pretrained_path="/mnt/petrelfs/huanghaifeng/share_hw/Chat-3D-v2/outputs/20240517_142546_lr5e-6_ep3_scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#nr3d_caption__scanrefer#scan2cap#scanqa#multi3dref#sqa3d__r16alpha32_videofeats_maxgrad1e-1_fusefeat/ckpt_01_3214.pth"
 # pretrained_path="/mnt/petrelfs/huanghaifeng/share_hw/Chat-3D-v2/outputs/20240517_221942_lr5e-6_ep3_scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#nr3d_caption__scanrefer#scan2cap#scanqa#multi3dref#sqa3d__r16alpha32_maxgrad1e-1/ckpt_01_3214.pth"
-pretrained_path=""
+# pretrained_path="/mnt/petrelfs/huanghaifeng/share_hw/Chat-3D-v2/outputs/20240512_015550_lr5e-6_ep3_scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#nr3d_caption__scanrefer#scan2cap#scanqa#multi3dref#sqa3d__v2.1_videofeat_r16alpha8/ckpt_01_3214.pth"  # SOTA
+# pretrained_path="/mnt/petrelfs/huanghaifeng/share_hw/Chat-3D-v2/outputs/20240802_150615_lr5e-6_ep3_scanrefer#scan2cap#obj_align#scanqa#sqa3d#multi3dref#nr3d_caption__scanrefer#scanqa__3d2d/ckpt_01_3214.pth" # re-train 3d2d
+pretrained_path="/mnt/petrelfs/huanghaifeng/share_hw/Chat-3D-v2/outputs/20240819_130946_lr5e-6_ep3_scanrefer#obj_align#nr3d_caption#scan2cap#scanqa#sqa3d#multi3dref__scanrefer#scan2cap#scanqa#multi3dref__only_scanrefer/ckpt_01_3214.pth"
 
 OUTPUT_DIR=outputs/"$(date +"%Y%m%d_%H%M%S")"_lr"$lr"_ep"$epoch"_"$tag"
 mkdir -p ${OUTPUT_DIR}
@@ -86,5 +88,7 @@ python tasks/train.py \
     model.feat_fusion "$feat_fusion" \
     optimizer.max_grad_norm "$max_grad_norm" \
     seed "$seed" \
-    model.fuse_with_id "$fuse_with_id"
+    model.fuse_with_id "$fuse_with_id" \
+    model.llama_model_path "$llama_model_path" \
+    model.use_location_token "$use_location_token"
 

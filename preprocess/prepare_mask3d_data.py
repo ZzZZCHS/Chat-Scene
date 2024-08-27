@@ -23,6 +23,9 @@ def process_one_scene(params, tmp_dir, id2class):
     cur_dir, file_path = params
     scene_id = file_path.split("/")[-1].split(".txt")[0]
     cur_scene_out = []
+    save_file = os.path.join(tmp_dir, f"{scene_id}.pt")
+    if os.path.exists(save_file):
+        return
     with open(file_path, "r") as f:
         for line in f.readlines():
             predict_path, class_id, score = line.split(" ")
@@ -39,7 +42,7 @@ def process_one_scene(params, tmp_dir, id2class):
                 "label": id2class[class_id],
                 "segments": segments
             })
-    torch.save(cur_scene_out, os.path.join(tmp_dir, f"{scene_id}.pt"))
+    torch.save(cur_scene_out, save_file)
 
 def process_per_scan(scan_id, scan_dir, out_dir, tmp_dir, apply_global_alignment=True, is_test=False):
     pcd_out_dir = os.path.join(out_dir, 'pcd_all')

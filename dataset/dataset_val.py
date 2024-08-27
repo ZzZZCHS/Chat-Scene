@@ -61,6 +61,8 @@ class ValDataset(BaseDataset):
             type_info = self.anno[index]['sqa_type']
         elif 'eval_type' in self.anno[index]:
             type_info = self.anno[index]['eval_type'] 
+        elif 'type_info' in self.anno[index]:
+            type_info = self.anno[index]['type_info']
         if 'prompt' not in self.anno[index]:
             prompt = random.choice(obj_caption_wid_prompt).replace('<id>', f"<OBJ{obj_id:03}>")
         else:

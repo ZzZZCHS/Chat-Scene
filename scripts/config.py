@@ -4,11 +4,15 @@ pc_encoder = "uni3d" # uni3d, clasp, dinov2
 segmentor = "mask3d" # mask3d, clasp, deva
 version = ""
 
+gt_feat_file = f"{anno_root}/scannet_gt_{pc_encoder}_feats.pt"
 seg_feat_file = f"{anno_root}/scannet_{segmentor}_{pc_encoder}_feats.pt"
 seg_all_feat_file = f"{anno_root}/scannet_{segmentor}_{pc_encoder}_feats_all.pt"
 # seg_img_feat_file = f"{anno_root}/scannet_img_mask3d_dinov2_features{version}.pt"
+gt_img_feat_file = f"{anno_root}/scannet_gt_videofeats{version}.pt"
 seg_img_feat_file = f"{anno_root}/scannet_{segmentor}_videofeats{version}.pt"
-# seg_img_feat_file = None #!!!
+seg_all_img_feat_file = f"{anno_root}/scannet_{segmentor}_videofeats_all{version}.pt"
+gt_train_attr_file = f"{anno_root}/scannet_train_attributes{version}.pt"
+gt_val_attr_file = f"{anno_root}/scannet_val_attributes{version}.pt"
 seg_train_attr_file = f"{anno_root}/scannet_{segmentor}_train_attributes{version}.pt"
 seg_val_attr_file = f"{anno_root}/scannet_{segmentor}_val_attributes{version}.pt"
 seg_all_attr_file = f"{anno_root}/scannet_{segmentor}_all_attributes{version}.pt"
@@ -24,23 +28,47 @@ train_file_dict = {
         seg_train_attr_file,
         f"{anno_root}/scanrefer_{segmentor}_train{version}.json"
     ],
-    'nr3d': [
+    'scanrefer_location': [
+        seg_feat_file,
+        seg_img_feat_file,
+        seg_train_attr_file,
+        f"{anno_root}/scanrefer_{segmentor}_train_location{version}.json"
+    ],
+    'nr3d_mask': [
         seg_feat_file,
         seg_img_feat_file,
         seg_train_attr_file,
         f"{anno_root}/nr3d_{segmentor}_train{version}.json"
     ],
-    'sr3d': [
+    'sr3d_mask': [
         seg_feat_file,
         seg_img_feat_file,
         seg_train_attr_file,
         f"{anno_root}/sr3d_{segmentor}_train{version}.json"
+    ],
+    'nr3d': [
+        gt_feat_file,
+        gt_img_feat_file,
+        gt_train_attr_file,
+        f"{anno_root}/nr3d_train{version}.json"
+    ],
+    'sr3d': [
+        gt_feat_file,
+        gt_img_feat_file,
+        gt_train_attr_file,
+        f"{anno_root}/sr3d_train{version}.json"
     ],
     'scan2cap': [
         seg_feat_file,
         seg_img_feat_file,
         seg_train_attr_file,
         f"{anno_root}/scan2cap_{segmentor}_train{version}.json"
+    ],
+    'scan2cap_location': [
+        seg_feat_file,
+        seg_img_feat_file,
+        seg_train_attr_file,
+        f"{anno_root}/scan2cap_{segmentor}_train_location{version}.json"
     ],
     'nr3d_caption': [
         seg_feat_file,
@@ -72,6 +100,12 @@ train_file_dict = {
         seg_train_attr_file,
         f"{anno_root}/multi3dref_{segmentor}_train{version}.json"
     ],
+    'multi3dref_location': [
+        seg_feat_file,
+        seg_img_feat_file,
+        seg_train_attr_file,
+        f"{anno_root}/multi3dref_{segmentor}_train_location{version}.json"
+    ],
     'scannet_caption': [
         seg_feat_file,
         seg_img_feat_file,
@@ -93,23 +127,35 @@ val_file_dict = {
         seg_val_attr_file,
         f"{anno_root}/scanqa_val.json"
     ],
+    'scanqa_test': [
+        seg_all_feat_file,
+        seg_all_img_feat_file,
+        seg_all_attr_file,
+        f"{anno_root}/scanqa_test.json"
+    ],
     'scanrefer': [
         seg_feat_file,
         seg_img_feat_file,
         seg_val_attr_file,
         f"{anno_root}/scanrefer_{segmentor}_val{version}.json"
     ],
-    'nr3d': [
+    'scanrefer_location': [
         seg_feat_file,
         seg_img_feat_file,
         seg_val_attr_file,
-        f"{anno_root}/nr3d_{segmentor}_val{version}.json"
+        f"{anno_root}/scanrefer_{segmentor}_val_location{version}.json"
+    ],
+    'nr3d': [
+        gt_feat_file,
+        gt_img_feat_file,
+        gt_val_attr_file,
+        f"{anno_root}/nr3d_val{version}.json"
     ],
     'sr3d': [
-        seg_feat_file,
-        seg_img_feat_file,
-        seg_val_attr_file,
-        f"{anno_root}/sr3d_{segmentor}_val{version}.json"
+        gt_feat_file,
+        gt_img_feat_file,
+        gt_val_attr_file,
+        f"{anno_root}/sr3d_val{version}.json"
     ],
     'scan2cap': [
         seg_feat_file,
@@ -117,9 +163,15 @@ val_file_dict = {
         seg_val_attr_file,
         f"{anno_root}/scan2cap_{segmentor}_val{version}.json"
     ],
+    'scan2cap_location': [
+        seg_feat_file,
+        seg_img_feat_file,
+        seg_val_attr_file,
+        f"{anno_root}/scan2cap_{segmentor}_val_location{version}.json"
+    ],
     'sqa3d': [
         seg_all_feat_file,
-        None,
+        seg_all_img_feat_file,
         seg_all_attr_file,
         f"{anno_root}/sqa3d_test.json"
     ],
@@ -128,6 +180,12 @@ val_file_dict = {
         seg_img_feat_file,
         seg_val_attr_file,
         f"{anno_root}/multi3dref_{segmentor}_val{version}.json"
+    ],
+    'multi3dref_location': [
+        seg_feat_file,
+        seg_img_feat_file,
+        seg_val_attr_file,
+        f"{anno_root}/multi3dref_{segmentor}_val_location{version}.json"
     ],
 }
 
@@ -161,7 +219,9 @@ model = dict(
     bidirection=False,
     add_pos_emb=False,
     feat_fusion=False,
-    fuse_with_id=False
+    fuse_with_id=False,
+    use_objid=True,
+    use_location_token=False
 )
 
 lora = dict(

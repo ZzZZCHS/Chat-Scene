@@ -1,33 +1,34 @@
-# Chat-3D v2
+# Chat-Scene
 
-This is an official repo for paper "Chat-3D v2: Bridging 3D Scene and Large Language Models with Object Identifiers". 
-[[paper](https://arxiv.org/abs/2312.08168)]
+We build a multi-modal large language model for 3D scene understanding, which achieves state-of-the-art performance across 3D grounding, captioning, and QA tasks.
 
 
 ## News
 
-[2024.04] 🔥 A refined implementation of Chat-3D v2 is released. The old version v2.0 has been archived in branch [v2.0](https://github.com/Chat-3D/Chat-3D-v2/tree/v2.0). This main branch is now for the new version (v2.1).
+[2024.08] We released Chat-Scene, which can handle both 3D and 2D ego-centric video input for 3D scene understanding. The grounding performance on ScanRefer and Multi3DRefer has been largely improved. (Paper will be released soon.)
 
-[2024.01] Update training guide for grounding on ScanRefer.
+[2024.04] We released a refined implementation (v2.1), which achieved better performance on grounding, captioning, and QA tasks. The code is in branch [v2.1](https://github.com/Chat-3D/Chat-3D-v2/tree/v2.1).
 
-[2023.12] Code release. The main training architecture is based on our former work [Chat-3D](https://github.com/Chat-3D/Chat-3D).
+[2023.12] We released Chat-3D v2 [[paper](https://arxiv.org/abs/2312.08168)], which proposes using object identifiers for object referencing and grounding in 3D scenes. The original code is in branch [v2.0](https://github.com/Chat-3D/Chat-3D-v2/tree/v2.0).
 
-## 🔥 v2.1 vs v2.0
+## 🔥 Chat-Scene vs Chat-3D v2
 
-- Performance comparison
+- Performance Comparison
 
   |      	| [ScanRefer](https://github.com/daveredrum/ScanRefer) 	|         	| [ScanQA](https://github.com/ATR-DBI/ScanQA) 	|        	|  [Scan2Cap](https://github.com/daveredrum/Scan2Cap) 	|            	| [Multi3dRefer](https://github.com/3dlg-hcvc/M3DRef-CLIP) 	|        	| [SQA3D](https://github.com/SilongYong/SQA3D) 	|
-  |:----:	|:---------:	|:-------:	|:------:	|:------:	|:---------:	|:----------:	|:------------:	|:------:	|:-----:	|
+  | :----:	|:---------:	|:-------:	|:------:	|:------:	|:---------:	|:----------:	|:------------:	|:------:	|:-----:	|
   |      	|  Acc@0.25 	| Acc@0.5 	|  CIDEr 	| B-4 	| CIDEr@0.5 	| B-4@0.5 	|    F1@0.25   	| F1@0.5 	|   EM  	|
   | v2.0 	|    35.9   	|   30.4  	|  77.1  	|   7.3  	|    28.1   	|    15.5    	|       -      	|    -   	|   -   	|
-  | **v2.1** 	|   **42.5**    	|  **38.4**   	|  **87.6**  	|  **14.0**  	|   **63.9**    	|    **31.8**    	|     **45.1**     	|  **41.6**  	| **54.7**  	|
+  | v2.1 	|   42.5    	|  38.4   	|  87.6  	|  14.0  	|   63.9    	|    31.8    	|     45.1     	|  41.6  	| 54.7  	|
+  | **Chat-Scene** | 54.6 | 49.4 |  |  |  |  |  |  |  |
 
+  \*The results of v2.1 and Chat-Scene are evaluated on single model **without finetuning on specific tasks**.
 
-  All results of v2.1 are evaluated on the same model **without finetuning on specific tasks**.
+  \*The results in the table are all on the validation set. (Test set results will be released soon.)
 
-
-- Main changes
-
+- Main Changes
+  <details>
+  <summary> Changes of v2.1 </summary>
   - LLM backbone: Vicuna v0 -> [Vicuna v1.5](https://github.com/lm-sys/FastChat/blob/main/docs/vicuna_weights_version.md) + LoRA finetuning
 
   - Training scheme: three-stage training -> one-stage joint training
@@ -37,6 +38,7 @@ This is an official repo for paper "Chat-3D v2: Bridging 3D Scene and Large Lang
   - Code Optimization:
     - batch size: 1 -> 32
     - Simpler training and evaluating process
+  </details>
 
 ## 🔨 Preparation
 

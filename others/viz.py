@@ -1,7 +1,7 @@
 import json
 import numpy as np
 import os
-import pyviz3d.visualizer as vis
+# import pyviz3d.visualizer as vis
 from plyfile import PlyData, PlyElement
 from tqdm import tqdm
 import pandas as pd
@@ -9,6 +9,7 @@ import colorsys
 import functools
 from typing import List, Tuple
 import random
+import torch
 
 
 def write_ply(verts, colors, output_file, indices=None):
@@ -103,15 +104,9 @@ def collect_Nr3d_gt(now_scene_id):
 
 
 if __name__ =="__main__":
-    now_scene_id = '0347_00'
+    scene_id = 'scene0046_00'
     used_ids = [0, 13, 12, 1, 17, 5, 21, 25]
-    # now_scene_id = '0027_00'
-    # used_ids = [2, 6, 3, 11, 14, 13, 9, 7]
-    # now_scene_id = '0673_04'
-    # used_ids = [62, 63, 64, 65, 66, 67]
-    # now_scene_id = '0515_00'
-    # used_ids = [10, 18, 56, 73, 72, 70, 71]
-    output_dir = os.path.join('ply_files', now_scene_id)
+    output_dir = os.path.join('ply_files', scene_id)
 
     # gt_coords, all_colors, _ = load_ply('ply_files/0515_00/origin.ply')
     # breakpoint()
@@ -119,112 +114,51 @@ if __name__ =="__main__":
         os.makedirs(output_dir)
     # dataset to show: scanrefer/nr3d/
     # test_dataset = "scanrefer"
+    
+    scan_data = np.load(f'/mnt/hwfile/OpenRobotLab/huanghaifeng/openscene/data/scans/{scene_id}/pc_infos.npy')
+    mask3d_data = torch.load(f'/mnt/hwfile/OpenRobotLab/huanghaifeng/openscene/data/mask3d_ins_data/pcd_all/{scene_id}.pth')
+    
+    
+    gt_coords, gt_vertices, all_colors = scan_data[:, :3], scan_data[:, 3:6], scan_data[:, 6:9]
+    inst_masks = mask3d_data[-1]
 
-    # Nr3d
-    # if test_dataset == "nr3d":
-    #     box_result_path = f'/mnt/petrelfs/share_data/chenyilun/share/mask3d/multi3drefer_results_nr3d/scene{now_scene_id}.json'
-    # elif test_dataset == "scanrefer":
-    #     box_result_path = f'./output/ScanRefer/scanrefer_eval_pretrained/inference/val/scene{now_scene_id}.json'
-    # box_result = json.load(open(box_result_path))
-    axis_align_matrix_path = f'/mnt/petrelfs/share_data/chenyilun/share/mask3d/mask3d_data/ScanNet_v2/scans/scene{now_scene_id}/scene{now_scene_id}.txt'
-    # pc_path = f'/mnt/petrelfs/share_data/chenyilun/share/mask3d/scannet200_3d_ins_mask3d/validation/{now_scene_id}.npy'
-    # if not os.path.exists(pc_path):
-    #     pc_path = f'/mnt/petrelfs/share_data/chenyilun/share/mask3d/scannet200_3d_ins_mask3d/train/{now_scene_id}.npy'
-    # vis_bbox = False  # 是否显示bbox
-    # vis_pc = True   # 是否显示instance segmentation
-
-    # points = np.load(pc_path)
-    # coordinates, color, normals, pc_segments, labels = (
-    #     points[:, :3],
-    #     points[:, 3:6],
-    #     points[:, 6:9],
-    #     points[:, 9],
-    #     points[:, 10:12],
-    # )
-    # v = vis.Visualizer()
-    # # print(coordinates.shape,color.shape)
-
-    # labels = labels.astype(np.int32)
-
-    # axis_align_matrix = read_axis_align_matrix(axis_align_matrix_path)
-    # assert np.all(np.fabs(axis_align_matrix[3, :3]) < 1e-8)
-
-    # coordinates = coordinates @ axis_align_matrix[:3, :3].T + axis_align_matrix[:3, 3:4].T # same to mesh.transform
-    # v.add_points(
-    #     "RGB Input",
-    #     coordinates,
-    #     colors=color,
-    #     visible=True,
-    #     point_size=25,
-    # )
-
-    # raw data
-    # import open3d as o3d
-    # raw_data = o3d.io.read_triangle_mesh(f'./dataset/scannetv2/scans/scene{now_scene_id}/scene{now_scene_id}_vh_clean_2.ply')
-    # raw_data.transform(axis_align_matrix) # inplace op
-    axis_align_matrix = read_axis_align_matrix(axis_align_matrix_path)
-    assert np.all(np.fabs(axis_align_matrix[3, :3]) < 1e-8)
-
-    # load gt_segs
-    gt_segs = {}
-    bin_path  = f"/mnt/petrelfs/share_data/maoxiaohan/ScanNet_v2/scans/scene{now_scene_id}/scene{now_scene_id}_vh_clean_2.ply"
-    json_path = f"/mnt/petrelfs/share_data/maoxiaohan/ScanNet_v2/scans/scene{now_scene_id}/scene{now_scene_id}_vh_clean_2.0.010000.segs.json"
-    agg_path  = f"/mnt/petrelfs/share_data/maoxiaohan/ScanNet_v2/scans/scene{now_scene_id}/scene{now_scene_id}_vh_clean.aggregation.json"
-    assert os.path.isfile(bin_path)
-
-    gt_coords, all_colors, _ = load_ply(bin_path)
-    gt_vertices = gt_coords @ axis_align_matrix[:3, :3].T + axis_align_matrix[:3, 3:4].T
-    print(gt_coords.shape, all_colors.shape)
-
-    with open(json_path,'r') as f:
-        gt_seg = json.load(f)["segIndices"]
-    with open(agg_path,'r') as f:
-        agg = json.load(f)["segGroups"]
-    assert gt_vertices.shape[0] == len(gt_seg)
-
+    instance_num = len(inst_masks)
+    
+    all_colors = all_colors * 255
+    
     write_ply(gt_vertices, all_colors, os.path.join(output_dir, 'origin.ply'))
-    instances_colors = np.vstack(get_evenly_distributed_colors(len(used_ids)))
+    instances_colors = np.vstack(get_evenly_distributed_colors(instance_num))
 
-    all_colors_bk = all_colors.copy()
-    all_colors.fill(158)
-
-    color_idx = -1
-    for i, agg_item in tqdm(enumerate(agg)):
-        if i not in used_ids:
-            continue
-        obj_id = agg_item["objectId"]
-        for item in agg:
-            if item["objectId"] == obj_id:
-                gt_segments = item["segments"]
-                break
-        idx = [(i in gt_segments) for i in gt_seg]
-        # seg parts
-        # parts = gt_vertices[idx,:]
-        # gt_segs[obj_id] = parts
-        color_idx += 1
-        all_colors[idx, :] = np.tile(instances_colors[color_idx], (sum(idx), 1))
-    
-    write_ply(gt_vertices, all_colors, os.path.join(output_dir, 'seg_with_gray_background.ply'))
-
-    all_colors = all_colors_bk
+    # all_colors_bk = all_colors.copy()
+    all_colors.fill(128)
 
     color_idx = -1
-    for i, agg_item in tqdm(enumerate(agg)):
-        if i not in used_ids:
-            continue
-        obj_id = agg_item["objectId"]
-        for item in agg:
-            if item["objectId"] == obj_id:
-                gt_segments = item["segments"]
-                break
-        idx = [(i in gt_segments) for i in gt_seg]
-        # seg parts
-        # parts = gt_vertices[idx,:]
-        # gt_segs[obj_id] = parts
+    for inst_id in range(instance_num):
         color_idx += 1
-        all_colors[idx, :] = np.tile(instances_colors[color_idx], (sum(idx), 1))
+        mask = inst_masks[inst_id]
+        all_colors[mask] = np.tile(instances_colors[color_idx], (len(mask), 1))
     
-    write_ply(gt_vertices, all_colors, os.path.join(output_dir, 'seg_with_origin.ply'))
+    write_ply(gt_vertices, all_colors, os.path.join(output_dir, f'{scene_id}.ply'))
+
+    # all_colors = all_colors_bk
+
+    # color_idx = -1
+    # for i, agg_item in tqdm(enumerate(agg)):
+    #     if i not in used_ids:
+    #         continue
+    #     obj_id = agg_item["objectId"]
+    #     for item in agg:
+    #         if item["objectId"] == obj_id:
+    #             gt_segments = item["segments"]
+    #             break
+    #     idx = [(i in gt_segments) for i in gt_seg]
+    #     # seg parts
+    #     # parts = gt_vertices[idx,:]
+    #     # gt_segs[obj_id] = parts
+    #     color_idx += 1
+    #     all_colors[idx, :] = np.tile(instances_colors[color_idx], (sum(idx), 1))
+    
+    # write_ply(gt_vertices, all_colors, os.path.join(output_dir, 'seg_with_origin.ply'))
     
     exit()
     

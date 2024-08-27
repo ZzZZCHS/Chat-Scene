@@ -49,6 +49,10 @@ multi3dref_prompt = [
     "Are there any objects that correspond to the description \"<description>\"? If yes, could you share the IDs for those objects?"
 ]
 
+multi3dref_location_prompt = [
+    "Are there any objects that correspond to the description \"<description>\"? If yes, could you share the locations for those objects?"
+]
+
 region_caption_prompt = [
     "Describe the area surrounding {}.",
     "Provide a description of the locality around {}.",
@@ -75,6 +79,10 @@ grounding_prompt = [
     # "According to the given description, \"<description>,\" please provide the ID of the object that closely matches this description."
 ]
 
+grounding_location_prompt = [
+    "According to the given description, \"<description>,\" please provide the location of the object that closely matches this description."
+]
+
 scan2cap_prompt = [
     "Begin by detailing the visual aspects of the <id> before delving into its spatial context among other elements within the scene.",
     "First, depict the physical characteristics of the <id>, followed by its placement and interactions within the surrounding environment.",
@@ -86,6 +94,10 @@ scan2cap_prompt = [
     "Detail the physical characteristics of the <id> and subsequently examine its spatial dynamics amidst other objects in the scene.",
     "Describe the visual traits of <id> first, then elucidate its spatial arrangements in relation to neighboring elements.",
     "Begin by outlining the appearance of <id>, then proceed to illustrate its spatial orientation within the scene alongside other objects."
+]
+
+scan2cap_location_prompt = [
+    "Here is an object located at <loc>. Begin by detailing the visual aspects of this object before delving into its spatial context among other elements within the scene.",
 ]
 
 nr3d_caption_prompt = [
