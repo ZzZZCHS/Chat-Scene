@@ -3,25 +3,19 @@
 We build a multi-modal large language model for 3D scene understanding, excelling in tasks such as 3D grounding, captioning, and question answering.
 
 <details>
-<summary> Ranked 1st on the ScanRefer Benchmark </summary>
+<summary> 🔥 Ranked 1st on the ScanRefer Benchmark (Sept. 2024) </summary>
 
 ![alt text](assets/scanrefer_benchmark_results.png)
-[benchmark link](https://kaldir.vc.in.tum.de/scanrefer_benchmark/benchmark_localization)
+[leaderboard link](https://kaldir.vc.in.tum.de/scanrefer_benchmark/benchmark_localization)
 </details>
 
 <details>
-<summary> Ranked 2nd on the Scan2Cap Benchmark </summary>
+<summary> 🔥 Ranked 1st on the Scan2Cap Benchmark (Sept. 2024) </summary>
 
 ![alt text](assets/scan2cap_benchmark_results.png)
-[benchmark link](https://kaldir.vc.in.tum.de/scanrefer_benchmark/benchmark_captioning)
+[leaderboard link](https://kaldir.vc.in.tum.de/scanrefer_benchmark/benchmark_captioning)
 </details>
 
-<details>
-<summary> Ranked 2nd on the ScanQA Benchmark </summary>
-
-![alt text](assets/scanqa_benchmark_results.png)
-[benchmark link](https://eval.ai/web/challenges/challenge-page/1715/leaderboard/4106/CIDEr)
-</details>
 
 ## News
 
