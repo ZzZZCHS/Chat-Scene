@@ -1,4 +1,4 @@
-# Chat-Scene
+## Chat-Scene: Bridging 3D Scene and Large Language Models with Object Identifiers
 
 We build a multi-modal large language model for 3D scene understanding, excelling in tasks such as 3D grounding, captioning, and question answering.
 
@@ -19,7 +19,9 @@ We build a multi-modal large language model for 3D scene understanding, excellin
 
 ## News
 
-**[2024.08]** 🔥 We released Chat-Scene, capable of processing both 3D point clouds and 2D multi-view images for improved 3D scene understanding, leading to significant advancements in grounding and captioning performance. (Paper to be released soon.)
+**[2024.09]** 🔥 Chat-Scene has been accepted by NeurIPS 2024! (Paper to be released soon.)
+
+**[2024.08]** 🔥 We released Chat-Scene, capable of processing both 3D point clouds and 2D multi-view images for improved 3D scene understanding, leading to significant advancements in grounding and captioning performance.
 
 **[2024.04]** We released a refined implementation (v2.1), which achieved better performance on grounding, captioning, and QA tasks. The code is available in branch [v2.1](https://github.com/Chat-3D/Chat-3D-v2/tree/v2.1).
 
@@ -34,11 +36,9 @@ We build a multi-modal large language model for 3D scene understanding, excellin
   |      	|  Acc@0.25 	| Acc@0.5 	|    F1@0.25   	| F1@0.5 	| CIDEr@0.5 	|   B-4@0.5 	|  CIDEr 	| B-4 	|   EM  	|
   | v2.0 	|    35.9   	|   30.4  	|       -      	|    -   	|    28.1   	|    15.5    	|  77.1  	|   7.3  	|   -   	|
   | v2.1 	|   42.5    	|  38.4   	|     45.1     	|  41.6  	|   63.9    	|    31.8    	|  87.6  	|  14.0  	| **54.7**  	|
-  | **Chat-Scene** | **55.5** | **49.6** | **57.1** | **52.4** | **77.1** | **36.3** | **87.7** | **14.3** | 54.6 |
+  | **Chat-Scene** | **55.5** | **50.2** | **57.1** | **52.4** | **77.1** | **36.3** | **87.7** | **14.3** | 54.6 |
 
-  <small>\*The v2.1 and Chat-Scene results are based on single models **without task-specific finetuning**.
-
-  \*All results are from the validation set. (Test set results will be released soon.)</small>
+  <small>\*The v2.1 and Chat-Scene results are based on single models **without task-specific finetuning**.</small>
 
 - Main Changes
   <details>
