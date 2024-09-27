@@ -1,4 +1,4 @@
-## Chat-Scene: Bridging 3D Scene and Large Language Models with Object Identifiers
+### Chat-Scene: Bridging 3D Scene and Large Language Models with Object Identifiers
 
 We build a multi-modal large language model for 3D scene understanding, excelling in tasks such as 3D grounding, captioning, and question answering.
 
@@ -134,7 +134,7 @@ We build a multi-modal large language model for 3D scene understanding, excellin
 If you find this project useful in your research, please consider cite:
 ```BibTeX
 @article{huang2023chat,
-  title={Chat-3D v2: Bridging 3D Scene and Large Language Models with Object Identifiers},
+  title={Chat-Scene: Bridging 3D Scene and Large Language Models with Object Identifiers},
   author={Huang, Haifeng and Wang, Zehan and Huang, Rongjie and Liu, Luping and Cheng, Xize and Zhao, Yang and Jin, Tao and Zhao, Zhou},
   journal={arXiv preprint arXiv:2312.08168},
   year={2023}
