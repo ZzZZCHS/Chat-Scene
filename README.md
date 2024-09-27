@@ -21,11 +21,13 @@ We build a multi-modal large language model for 3D scene understanding, excellin
 
 **[2024.09]** 🔥 Chat-Scene has been accepted by NeurIPS 2024! [[paper](https://arxiv.org/abs/2312.08168)]
 
-**[2024.08]** 🔥 We released Chat-Scene, capable of processing both 3D point clouds and 2D multi-view images for improved 3D scene understanding, leading to significant advancements in grounding and captioning performance.
+**[2024.08]** 🔥 We release Chat-Scene, capable of processing both 3D point clouds and 2D multi-view images for improved 3D scene understanding, leading to significant advancements in grounding and captioning performance.
 
-**[2024.04]** We released a refined implementation (v2.1), which achieved better performance on grounding, captioning, and QA tasks. The code is available in branch [v2.1](https://github.com/Chat-3D/Chat-3D-v2/tree/v2.1).
+**[2024.04]** We release a refined implementation (v2.1), which achieves better performance on grounding, captioning, and QA tasks. The code is available in branch [v2.1](https://github.com/ZzZZCHS/Chat-Scene/tree/v2.1).
 
-**[2023.12]** We released Chat-3D v2 [[paper](https://arxiv.org/abs/2312.08168v2)], introducing object identifiers for enhanced object referencing and grounding in 3D scenes. The original code is available in branch [v2.0](https://github.com/Chat-3D/Chat-3D-v2/tree/v2.0).
+**[2023.12]** We release Chat-3D v2 [[paper](https://arxiv.org/abs/2312.08168v2)], introducing object identifiers for enhanced object referencing and grounding in 3D scenes. The original code is available in branch [v2.0](https://github.com/ZzZZCHS/Chat-Scene/tree/v2.0).
+
+**[2023.08]** We release Chat-3D [[paper](https://arxiv.org/abs/2308.08769)] [[code](https://github.com/Chat-3D/Chat-3D)], an LLM-based dialogue system for 3D scenes.
 
 ## 🔥 Chat-Scene vs Chat-3D v2
 
