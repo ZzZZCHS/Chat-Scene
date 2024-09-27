@@ -1,4 +1,4 @@
-### Chat-Scene: Bridging 3D Scene and Large Language Models with Object Identifiers
+# Chat-Scene
 
 We build a multi-modal large language model for 3D scene understanding, excelling in tasks such as 3D grounding, captioning, and question answering.
 
