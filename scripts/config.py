@@ -32,13 +32,13 @@ train_file_dict = {
         seg_train_attr_file,
         f"{anno_root}/scanrefer_{segmentor}_train_location{version}.json"
     ],
-    'nr3d_mask': [
+    'nr3d_seg': [
         seg_feat_file,
         seg_img_feat_file,
         seg_train_attr_file,
         f"{anno_root}/nr3d_{segmentor}_train{version}.json"
     ],
-    'sr3d_mask': [
+    'sr3d_seg': [
         seg_feat_file,
         seg_img_feat_file,
         seg_train_attr_file,
@@ -137,6 +137,12 @@ val_file_dict = {
         seg_val_attr_file,
         f"{anno_root}/scanrefer_{segmentor}_val{version}.json"
     ],
+    'scanrefer_test': [
+        seg_all_feat_file,
+        seg_all_img_feat_file,
+        seg_all_attr_file,
+        f"{anno_root}/scanrefer_{segmentor}_test{version}.json"
+    ],
     'scanrefer_location': [
         seg_feat_file,
         seg_img_feat_file,
@@ -149,17 +155,35 @@ val_file_dict = {
         gt_val_attr_file,
         f"{anno_root}/nr3d_val{version}.json"
     ],
+    'nr3d_seg': [
+        seg_feat_file,
+        seg_img_feat_file,
+        seg_val_attr_file,
+        f"{anno_root}/nr3d_{segmentor}_val{version}.json"
+    ],
     'sr3d': [
         gt_feat_file,
         gt_img_feat_file,
         gt_val_attr_file,
         f"{anno_root}/sr3d_val{version}.json"
     ],
+    'sr3d_seg': [
+        seg_feat_file,
+        seg_img_feat_file,
+        seg_val_attr_file,
+        f"{anno_root}/sr3d_{segmentor}_val{version}.json"
+    ],
     'scan2cap': [
         seg_feat_file,
         seg_img_feat_file,
         seg_val_attr_file,
         f"{anno_root}/scan2cap_{segmentor}_val{version}.json"
+    ],
+    'scan2cap_test': [
+        seg_all_feat_file,
+        seg_all_img_feat_file,
+        seg_all_attr_file,
+        f"{anno_root}/scan2cap_{segmentor}_test{version}.json"
     ],
     'scan2cap_location': [
         seg_feat_file,
@@ -172,6 +196,12 @@ val_file_dict = {
         seg_img_feat_file,
         seg_val_attr_file,
         f"{anno_root}/sqa3d_test.json"
+    ],
+    'sqa3d_val': [
+        seg_feat_file,
+        seg_img_feat_file,
+        seg_val_attr_file,
+        f"{anno_root}/sqa3d_val.json"
     ],
     'multi3dref': [
         seg_feat_file,
