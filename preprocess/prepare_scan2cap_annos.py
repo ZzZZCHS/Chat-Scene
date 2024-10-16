@@ -43,6 +43,10 @@ for split in ["train", "val"]:
         corpus[gt_key].append(description)
         scene_ids.add(anno['scene_id'])
     scene_ids = list(scene_ids)
+    
+    if split == 'val':
+        with open('annotations/scan2cap_val_corpus.json', 'w') as f:
+            json.dump(corpus, f, indent=4)
 
     count = [0] * args.max_obj_num
     if segmentor == 'deva':
@@ -140,3 +144,41 @@ for split in ["train", "val"]:
 
     with open(f"annotations/scan2cap_{segmentor}_{split}{version}.json", "w") as f:
         json.dump(new_annos, f, indent=4)
+        
+        
+# for test split
+# split = 'test'
+# segmentor = args.segmentor
+# version = args.version
+# annos = json.load(open(f"annotations/scanrefer/ScanRefer_filtered_{split}.json", "r"))
+# new_annos = []
+
+# print(len(annos))
+# scene_ids = set()
+# for anno in annos:
+#     scene_ids.add(anno['scene_id'])
+# scene_ids = list(scene_ids)
+
+# count = [0] * args.max_obj_num
+# instance_attribute_file = f"annotations/scannet_{segmentor}_{split}_attributes{version}.pt"
+# instance_attrs = torch.load(instance_attribute_file, map_location='cpu')
+
+
+# for scene_id in tqdm(scene_ids):
+#     if scene_id not in instance_attrs:
+#         print('skip', scene_id)
+#         continue
+#     instance_locs = instance_attrs[scene_id]["locs"]
+#     instance_num = len(instance_locs)
+#     for pred_id in range(instance_num):
+#         new_annos.append({
+#             'scene_id': scene_id,
+#             'pred_id': pred_id,
+#             'prompt': random.choice(scan2cap_prompt).replace(f"<id>", f"<OBJ{pred_id:03}>"),
+#             "ref_captions": [""]
+#         })
+
+# print(len(new_annos))
+
+# with open(f"annotations/scan2cap_{segmentor}_{split}{version}.json", "w") as f:
+#     json.dump(new_annos, f, indent=4)
