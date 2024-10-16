@@ -52,8 +52,6 @@ class BaseDataset(Dataset):
             scene_img_feat = []
             scene_mask = []
             for _i, _id in enumerate(obj_ids):
-                if scan_id == 'scene0217_00':  # !!!!
-                    _id += 31
                 item_id = '_'.join([scan_id, f'{_id:02}'])
                 if self.feats is None or item_id not in self.feats:
                     # scene_feat.append(torch.randn((self.feat_dim)))
