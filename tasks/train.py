@@ -279,7 +279,7 @@ def evaluate(
             val_scores = calc_scanrefer_score(save_preds, config)
         elif eval_name in ["scan2cap", "scan2cap_location"]:
             val_scores = calc_scan2cap_score(save_preds, tokenizer, scorers, config)
-        elif eval_name == ["sqa3d", "sqa3d_val"]:
+        elif eval_name in ["sqa3d", "sqa3d_val"]:
             val_scores = calc_sqa3d_score(save_preds, tokenizer, scorers, config)
         elif eval_name == 'multi3dref':
             val_scores = calc_multi3dref_score(save_preds, config)
