@@ -39,7 +39,7 @@ for split in ["train", "val"]:
     corpus = defaultdict(list)
     for anno in annos:
         gt_key = f"{anno['scene_id']}|{anno['object_id']}"
-        description = capitalize_sentences(anno['description'])
+        description = "sos " + capitalize_sentences(anno['description']) + " eos"
         corpus[gt_key].append(description)
         scene_ids.add(anno['scene_id'])
     scene_ids = list(scene_ids)
