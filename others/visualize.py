@@ -280,15 +280,15 @@ if __name__ == "__main__":
     mesh.write(os.path.join(output_scene_dir, 'scene.ply'))
 
     gt_attrs = torch.load('annotations/scannet_train_attributes.pt')
-    # segmented_attrs = torch.load('annotations/scannet_deva_attributes.pt')
+    segmented_attrs = torch.load('annotations/scannet_mask3d_all_attributes.pt')
 
-    # gt_ids = range(len(gt_attrs[scene_id]['locs']))
-    gt_ids = [44, 13, 54, 52]
+    gt_ids = range(len(gt_attrs[scene_id]['locs']))
+    # gt_ids = [44, 13, 54, 52]
     for i, gt_id in enumerate(gt_ids):
         gt_bbox = list(gt_attrs[scene_id]['locs'][gt_id])
-        write_bbox(gt_bbox + [0.], i, os.path.join(output_scene_dir, f"gt_{gt_id}.ply"))
+        write_bbox(gt_bbox + [0.], 0, os.path.join(output_scene_dir, f"gt_{gt_id}.ply"))
     
-    # pred_ids = range(len(segmented_attrs[scene_id]['locs']))
-    # for pred_id in pred_ids:
-    #     pred_bbox = list(segmented_attrs[scene_id]['locs'][pred_id])
-    #     write_bbox(pred_bbox + [0.], 1, os.path.join(output_scene_dir, f"deva_{pred_id}.ply"))
+    pred_ids = range(len(segmented_attrs[scene_id]['locs']))
+    for pred_id in pred_ids:
+        pred_bbox = list(segmented_attrs[scene_id]['locs'][pred_id])
+        write_bbox(pred_bbox + [0.], 1, os.path.join(output_scene_dir, f"mask3d_{pred_id}.ply"))
