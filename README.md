@@ -118,7 +118,7 @@ We build a multi-modal large language model for 3D scene understanding, excellin
 
 - Inference
   
-  - Modify [run.sh](scripts/run.sh): (We provide the pretrained checkpoint in [Google Drive](https://drive.google.com/file/d/1Ziz7Be9l6MEbn3Qmlyr9gv42C0iJQgAn/view?usp=sharing))
+  - Modify [run.sh](scripts/run.sh): (We provide the pretrained checkpoint in [Hugging Face](https://huggingface.co/datasets/ZzZZCHS/Chat-Scene/tree/main/pretrained))
   
     ```python
     val_tag="scanrefer#scan2cap#scanqa#sqa3d#multi3dref"

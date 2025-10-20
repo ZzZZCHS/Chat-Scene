@@ -1,6 +1,11 @@
 ## Skip the data preparation
 
-- We’ve provided all the prepared data in [Google Drive](https://drive.google.com/drive/folders/1iwVFUkvveehvwGcAnJK3EwLxBt5ggR2c?usp=sharing). Simply download the files and place them in the annotations/ directory. You’ll then be ready to run and test the code.
+- We’ve provided all the prepared data in [Hugging Face](https://huggingface.co/datasets/ZzZZCHS/Chat-Scene/tree/main/annotations). Simply download the files and place them in the `annotations/` directory. You’ll then be ready to run and test the code.
+
+    ```
+    pip install gdown
+    gdown --folder https://drive.google.com/drive/folders/1iwVFUkvveehvwGcAnJK3EwLxBt5ggR2c -O /path/to/Chat-Scene/annotations/
+    ```
 
 ## Prepare data
 
@@ -8,7 +13,7 @@
 
 - Extract object masks using a pretrained 3D detector:
     - Use [Mask3D](https://github.com/JonasSchult/Mask3D) for instance segmentation. We used the [checkpoint](https://omnomnom.vision.rwth-aachen.de/data/mask3d/checkpoints/scannet200/scannet200_val.ckpt) pretrained on ScanNet200.
-    - The complete predicted results (especially the masks) for the train/validation sets are too large to share (~40GB). We’ve shared the post-processed [results](https://drive.google.com/file/d/1jwQYJvkWwRmawZvNOSy6U0lnqnEiasNX/view?usp=sharing):
+    - The complete predicted results (especially the masks) for the train/validation sets are too large to share (~40GB). We’ve shared the post-processed [results](https://huggingface.co/datasets/ZzZZCHS/Chat-Scene/tree/main/data):
         - Unzip the `mask3d_inst_seg.tar.gz` file.
         - Each file under `mask3d_inst_seg` contains the predicted results for a single scene, including a list of segmented instances with their labels and segmented indices.
 
