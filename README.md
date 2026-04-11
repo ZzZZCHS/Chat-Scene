@@ -19,9 +19,11 @@ We build a multi-modal large language model for 3D scene understanding, excellin
 
 ## News
 
+**[2026.03]** 🔥 Chat-Scene++ has been accepted by TPAMI 2026! [[paper](https://arxiv.org/abs/2603.27507)] [[data](https://huggingface.co/datasets/ZzZZCHS/Chat-Scene_plusplus/tree/main/annotations)]
+
 **[2024.09]** 🔥 Chat-Scene has been accepted by NeurIPS 2024! [[paper](https://arxiv.org/abs/2312.08168)]
 
-**[2024.08]** 🔥 We release Chat-Scene, capable of processing both 3D point clouds and 2D multi-view images for improved 3D scene understanding, leading to significant advancements in grounding and captioning performance.
+**[2024.08]** We release Chat-Scene, capable of processing both 3D point clouds and 2D multi-view images for improved 3D scene understanding, leading to significant advancements in grounding and captioning performance.
 
 **[2024.04]** We release a refined implementation (v2.1), which achieves better performance on grounding, captioning, and QA tasks. The code is available in branch [v2.1](https://github.com/ZzZZCHS/Chat-Scene/tree/v2.1).
 
@@ -133,6 +135,12 @@ We build a multi-modal large language model for 3D scene understanding, excellin
 
 If you find this project useful in your research, please consider cite:
 ```BibTeX
+@article{huang2026chat,
+  title={Chat-Scene++: Exploiting Context-Rich Object Identification for 3D LLM},
+  author={Huang, Haifeng and Chen, Yilun and Wang, Zehan and Pang, Jiangmiao and Zhao, Zhou},
+  journal={arXiv preprint arXiv:2603.27507},
+  year={2026}
+}
 @article{huang2024chat,
   title={Chat-scene: Bridging 3d scene and large language models with object identifiers},
   author={Huang, Haifeng and Chen, Yilun and Wang, Zehan and Huang, Rongjie and Xu, Runsen and Wang, Tai and Liu, Luping and Cheng, Xize and Zhao, Yang and Pang, Jiangmiao and others},
@@ -149,7 +157,7 @@ If you find this project useful in your research, please consider cite:
 
 Stay tuned for our project. 🔥
 
-If you have any questions or suggestions, feel free to drop us an email (`huanghaifeng@zju.edu.cn`, `wangzehan01@zju.edu.cn`) or open an issue.
+If you have any questions or suggestions, feel free to open an issue or drop us an email (`huanghaifeng317@gmail.com`).
 
 ## 😊 Acknowledgement
 
